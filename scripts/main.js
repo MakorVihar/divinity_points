@@ -7,17 +7,13 @@ Handlebars.registerHelper("dpFormat", (path, ...args) => {
   return game.i18n.format(path, args[0].hash);
 });
 
-// Tracks the previous value of dpResource so the onChange handler can
-// pass it to updateAllDpItemSources for renaming source.custom on all items.
-let _previousDpResource = "Divinity Points";
-
 Hooks.on("init", () => {
   console.log(`${DP_MODULE_NAME} | Initialising Divinity Points module`);
 
   CONFIG.DND5E.activityConsumptionTypes.divinityPoints = buildConsumptionConfig();
 
   game.dnd5e.config.featureTypes.class.subtypes.dp =
-    game.i18n.localize(`${DP_MODULE_NAME}.dpClassSubtype`);
+    game.settings.get(DP_MODULE_NAME, "dpResource");
 
   // ── Settings ──────────────────────────────────────────────────────────────
 
@@ -49,11 +45,23 @@ Hooks.on("init", () => {
   game.settings.register(DP_MODULE_NAME, "dpResource", {
     name: `${DP_MODULE_NAME}.resourceLabel`, hint: `${DP_MODULE_NAME}.resourceNote`,
     scope: "world", config: true, type: String, default: "Divinity Points",
-    onChange: (newName) => {
-      const oldName = _previousDpResource;
-      _previousDpResource = newName;
-      if (oldName && oldName !== newName)
-        DivinityPoints.updateAllDpItemSources(newName, oldName);
+    onChange: async (newName) => {
+      // Find all existing DP items by the module flag or source.custom matching
+      // any feat — then update them to the new name.
+      // We search by source.custom matching anything that exists in the world
+      // rather than the old name, because on reload we don't know the old name.
+      if (!game.user.isGM) return;
+      for (const item of game.items) {
+        if (DivinityPoints.isDivinityItemByFlag(item)) {
+          await item.update({ name: newName, "system.source.custom": newName });
+        }
+      }
+      for (const actor of game.actors) {
+        const dpItem = DivinityPoints.getDivinityPointsItem(actor);
+        if (dpItem) {
+          await dpItem.update({ name: newName, "system.source.custom": newName });
+        }
+      }
     },
   });
   game.settings.register(DP_MODULE_NAME, "dpActivateBar", {
@@ -77,9 +85,6 @@ Hooks.on("init", () => {
     scope: "world", config: false, type: Boolean, default: false,
   });
 
-  // Seed the tracker with whatever is currently saved
-  _previousDpResource = game.settings.get(DP_MODULE_NAME, "dpResource");
-
   DivinityPoints.setDpColors();
   window.getDivinityPointsItem = DivinityPoints.getDivinityPointsItem.bind(DivinityPoints);
   window.alterDivinityPoints   = DivinityPoints.alterDivinityPoints.bind(DivinityPoints);
@@ -87,8 +92,9 @@ Hooks.on("init", () => {
 
 Hooks.on("ready", async () => {
   if (!game.user.isGM) return;
-  if (game.settings.get(DP_MODULE_NAME, "starterItemCreated")) return;
 
+  // Always check whether the item actually exists — the flag alone isn't enough
+  // because the GM may have deleted the item from the Items tab.
   const existing = game.items.find(
     i => i.type === "feat" &&
       i.system?.source?.custom === DivinityPoints.settings.dpResource
@@ -97,6 +103,9 @@ Hooks.on("ready", async () => {
     await game.settings.set(DP_MODULE_NAME, "starterItemCreated", true);
     return;
   }
+
+  // Item is missing — recreate it regardless of the flag
+  await game.settings.set(DP_MODULE_NAME, "starterItemCreated", false);
 
   const description = [
     "<h1>Divinity Points</h1>",
@@ -129,7 +138,10 @@ Hooks.on("ready", async () => {
     });
     await game.settings.set(DP_MODULE_NAME, "starterItemCreated", true);
     ui.notifications.info(
-      game.i18n.format(`${DP_MODULE_NAME}.starterItemReady`, { name: created.name }),
+      game.i18n.format(`${DP_MODULE_NAME}.starterItemReady`, {
+        name:       created.name,
+        dpResource: game.settings.get(DP_MODULE_NAME, "dpResource"),
+      }),
       { permanent: true }
     );
   } catch (err) {

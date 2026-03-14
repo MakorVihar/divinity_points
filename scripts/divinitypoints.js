@@ -26,7 +26,8 @@ function dpChatMessage(content, actorName, whisper) {
 
 export function buildConsumptionConfig() {
   return {
-    label: game.i18n.localize(`${DP_MODULE_NAME}.consumptionTypeLabel`),
+    // Read the setting at call time so it reflects any rename
+    get label() { return DivinityPoints.settings.dpResource; },
 
     // consume() is only called when preActivityConsumption did NOT block.
     // It still re-validates availability, because non-deterministic formulas
@@ -88,8 +89,7 @@ export function buildConsumptionConfig() {
     consumptionLabels(config, options = {}) {
       const actor  = this.actor;
       const dpItem = actor ? DivinityPoints.getDivinityPointsItem(actor) : null;
-      const name   = dpItem?.name
-        ?? game.i18n.localize(`${DP_MODULE_NAME}.consumptionTypeLabel`);
+      const name   = dpItem?.name ?? DivinityPoints.settings.dpResource;
       const available = dpItem
         ? (dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0)) : 0;
 
@@ -252,6 +252,25 @@ export class DivinityPoints {
     );
   }
 
+  /**
+   * Identifies a DP item using only the actor flag — used during rename so we
+   * don't depend on source.custom matching the (about-to-change) setting value.
+   */
+  static isDivinityItemByFlag(item) {
+    // World item: check if any actor has flagged this item ID
+    if (item.parent?.documentName === "Actor") {
+      return DivinityPoints.getActorFlagDpItem(item.parent) === item._id;
+    }
+    // World-level item: match by source.custom equaling any known non-empty value
+    // (we can't know the old name, so match any feat whose source.custom is set
+    //  and whose ID is referenced in any actor flag)
+    if (item.type !== "feat") return false;
+    for (const actor of game.actors ?? []) {
+      if (DivinityPoints.getActorFlagDpItem(actor) === item._id) return true;
+    }
+    return false;
+  }
+
   static getDivinityPointsItem(actor) {
     if (!actor) return false;
     const items  = foundry.utils.getProperty(actor, "items");
@@ -301,7 +320,8 @@ export class DivinityPoints {
 
     if (DivinityPoints.getActorFlagDpItem(actor)) {
       ui.notifications.error(
-        game.i18n.localize(`${DP_MODULE_NAME}.alreadyDpItemOwned`)
+        game.i18n.format(`${DP_MODULE_NAME}.alreadyDpItemOwned`,
+          { dpResource: DivinityPoints.settings.dpResource })
       );
       await item.update({
         name: item.name + " (" +
@@ -407,23 +427,25 @@ export class DivinityPoints {
   }
 
   /**
-   * Called when dpResource setting changes. Updates source.custom on every
-   * Divinity Points item in the world and on every actor sheet so the
-   * identifier stays in sync with the new name.
+   * Called when dpResource setting changes. Updates source.custom AND the
+   * item name on every Divinity Points item in the world and on every actor
+   * sheet so everything stays in sync with the new name.
    */
   static async updateAllDpItemSources(newName, oldName) {
     if (!game.user.isGM) return;
+    console.log(`${DP_MODULE_NAME} | Renaming DP items: "${oldName}" → "${newName}"`);
+
     // World items
     for (const item of game.items) {
       if (item.type === "feat" && item.system?.source?.custom === oldName) {
-        await item.update({ "system.source.custom": newName });
+        await item.update({ name: newName, "system.source.custom": newName });
       }
     }
     // Actor-embedded items
     for (const actor of game.actors) {
       for (const item of actor.items) {
         if (item.type === "feat" && item.system?.source?.custom === oldName) {
-          await item.update({ "system.source.custom": newName });
+          await item.update({ name: newName, "system.source.custom": newName });
         }
       }
     }
