@@ -7,6 +7,10 @@ Handlebars.registerHelper("dpFormat", (path, ...args) => {
   return game.i18n.format(path, args[0].hash);
 });
 
+// Tracks the previous value of dpResource so the onChange handler can
+// pass it to updateAllDpItemSources for renaming source.custom on all items.
+let _previousDpResource = "Divinity Points";
+
 Hooks.on("init", () => {
   console.log(`${DP_MODULE_NAME} | Initialising Divinity Points module`);
 
@@ -45,6 +49,12 @@ Hooks.on("init", () => {
   game.settings.register(DP_MODULE_NAME, "dpResource", {
     name: `${DP_MODULE_NAME}.resourceLabel`, hint: `${DP_MODULE_NAME}.resourceNote`,
     scope: "world", config: true, type: String, default: "Divinity Points",
+    onChange: (newName) => {
+      const oldName = _previousDpResource;
+      _previousDpResource = newName;
+      if (oldName && oldName !== newName)
+        DivinityPoints.updateAllDpItemSources(newName, oldName);
+    },
   });
   game.settings.register(DP_MODULE_NAME, "dpActivateBar", {
     name: `${DP_MODULE_NAME}.dpResourceBarActive`, hint: `${DP_MODULE_NAME}.dpResourceBarActiveHint`,
@@ -66,6 +76,9 @@ Hooks.on("init", () => {
   game.settings.register(DP_MODULE_NAME, "starterItemCreated", {
     scope: "world", config: false, type: Boolean, default: false,
   });
+
+  // Seed the tracker with whatever is currently saved
+  _previousDpResource = game.settings.get(DP_MODULE_NAME, "dpResource");
 
   DivinityPoints.setDpColors();
   window.getDivinityPointsItem = DivinityPoints.getDivinityPointsItem.bind(DivinityPoints);

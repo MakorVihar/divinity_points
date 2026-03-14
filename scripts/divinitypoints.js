@@ -243,22 +243,25 @@ export class DivinityPoints {
   }
 
   static isDivinityItem(item) {
-    const sourceOk = (
-      item.flags?.core?.sourceId ===
-        `Compendium.${DP_MODULE_NAME}.module-items.Item.${DP_ITEM_ID}` ||
-      item.system?.source?.custom === DivinityPoints.settings.dpResource
+    return (
+      item.type === "feat" && (
+        item.flags?.core?.sourceId ===
+          `Compendium.${DP_MODULE_NAME}.module-items.Item.${DP_ITEM_ID}` ||
+        item.system?.source?.custom === DivinityPoints.settings.dpResource
+      )
     );
-    return item.type === "feat" && sourceOk;
   }
 
   static getDivinityPointsItem(actor) {
     if (!actor) return false;
     const items  = foundry.utils.getProperty(actor, "items");
+    // Primary: stored item ID in actor flags
     const flagId = DivinityPoints.getActorFlagDpItem(actor);
     if (flagId) {
       const found = items.get(flagId);
       if (found) return found;
     }
+    // Fallback: source.custom match (kept in sync with setting via onChange)
     return items.find(i =>
       i.type === "feat" &&
       i.system?.source?.custom === DivinityPoints.settings.dpResource
@@ -401,6 +404,29 @@ export class DivinityPoints {
         await DivinityPoints._handleBarValueChange(dpItem, e, html, max);
       })
       .on("keydown", (e) => { if (e.key === "Enter") e.target.blur(); });
+  }
+
+  /**
+   * Called when dpResource setting changes. Updates source.custom on every
+   * Divinity Points item in the world and on every actor sheet so the
+   * identifier stays in sync with the new name.
+   */
+  static async updateAllDpItemSources(newName, oldName) {
+    if (!game.user.isGM) return;
+    // World items
+    for (const item of game.items) {
+      if (item.type === "feat" && item.system?.source?.custom === oldName) {
+        await item.update({ "system.source.custom": newName });
+      }
+    }
+    // Actor-embedded items
+    for (const actor of game.actors) {
+      for (const item of actor.items) {
+        if (item.type === "feat" && item.system?.source?.custom === oldName) {
+          await item.update({ "system.source.custom": newName });
+        }
+      }
+    }
   }
 
   static async _handleBarValueChange(item, event, html, max) {
