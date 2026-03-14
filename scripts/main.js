@@ -1,6 +1,7 @@
 import { DP_MODULE_NAME } from "./constants.js";
 import { DivinityPoints, buildConsumptionConfig, validateDpConsumption } from "./divinitypoints.js";
 import { ActorDivinityPointsConfig } from "./actor-bar-config.js";
+import { DpSettingsForm } from "./settings-form.js";
 
 Handlebars.registerHelper("dpFormat", (path, ...args) => {
   return game.i18n.format(path, args[0].hash);
@@ -14,6 +15,33 @@ Hooks.on("init", () => {
   game.dnd5e.config.featureTypes.class.subtypes.dp =
     game.i18n.localize(`${DP_MODULE_NAME}.dpClassSubtype`);
 
+  // ── Settings ──────────────────────────────────────────────────────────────
+
+  // Color/bar settings live behind a dedicated menu that uses <color-picker>
+  game.settings.registerMenu(DP_MODULE_NAME, "colorMenu", {
+    name:       `${DP_MODULE_NAME}.colorSettingsTitle`,
+    label:      `${DP_MODULE_NAME}.colorSettingsButton`,
+    hint:       `${DP_MODULE_NAME}.colorSettingsHint`,
+    icon:       "fas fa-palette",
+    type:       DpSettingsForm,
+    restricted: true,
+  });
+
+  // These three are owned by the menu form but still need to be registered
+  // so game.settings.get/set works.
+  game.settings.register(DP_MODULE_NAME, "dpColorL", {
+    scope: "world", config: false, type: String, default: "#4a1060",
+    onChange: () => DivinityPoints.setDpColors(),
+  });
+  game.settings.register(DP_MODULE_NAME, "dpColorR", {
+    scope: "world", config: false, type: String, default: "#c89020",
+    onChange: () => DivinityPoints.setDpColors(),
+  });
+  game.settings.register(DP_MODULE_NAME, "dpAnimateBar", {
+    scope: "world", config: false, type: Boolean, default: true,
+    onChange: () => DivinityPoints.setDpColors(),
+  });
+
   game.settings.register(DP_MODULE_NAME, "dpResource", {
     name: `${DP_MODULE_NAME}.resourceLabel`, hint: `${DP_MODULE_NAME}.resourceNote`,
     scope: "world", config: true, type: String, default: "Divinity Points",
@@ -21,25 +49,6 @@ Hooks.on("init", () => {
   game.settings.register(DP_MODULE_NAME, "dpActivateBar", {
     name: `${DP_MODULE_NAME}.dpResourceBarActive`, hint: `${DP_MODULE_NAME}.dpResourceBarActiveHint`,
     scope: "world", config: true, type: Boolean, default: true,
-  });
-  game.settings.register(DP_MODULE_NAME, "dpAnimateBar", {
-    name: `${DP_MODULE_NAME}.dpResourceBarAnimate`,
-    scope: "world", config: true, type: Boolean, default: true,
-    onChange: () => DivinityPoints.setDpColors(),
-  });
-  game.settings.register(DP_MODULE_NAME, "dpColorL", {
-    name: `${DP_MODULE_NAME}.dpResourceBarLeftColor`,
-    scope: "world", config: true,
-    type: new foundry.data.fields.ColorField({ required: true, nullable: false, initial: "#4a1060" }),
-    default: "#4a1060",
-    onChange: () => DivinityPoints.setDpColors(),
-  });
-  game.settings.register(DP_MODULE_NAME, "dpColorR", {
-    name: `${DP_MODULE_NAME}.dpResourceBarRightColor`,
-    scope: "world", config: true,
-    type: new foundry.data.fields.ColorField({ required: true, nullable: false, initial: "#c89020" }),
-    default: "#c89020",
-    onChange: () => DivinityPoints.setDpColors(),
   });
   game.settings.register(DP_MODULE_NAME, "dpGmOnly", {
     name: `${DP_MODULE_NAME}.dpGmOnly`, hint: `${DP_MODULE_NAME}.dpGmOnlyNote`,
@@ -134,8 +143,6 @@ Hooks.on("updateActor", async (actor) => {
 });
 
 // SYNCHRONOUS — dnd5e uses Hooks.call() which cannot await async handlers.
-// validateDpConsumption returns false synchronously to block the activity.
-// ChatMessage.create() inside it is fire-and-forget (no await needed).
 Hooks.on("dnd5e.preActivityConsumption", (activity, usageConfig, messageConfig) => {
   return validateDpConsumption(activity, usageConfig, messageConfig);
 });
