@@ -78,7 +78,7 @@ export function buildConsumptionConfig() {
         content: "<i style='color:green;'>" +
           game.i18n.format(DP_MODULE_NAME + ".usedDp",
             {
-              ActorName: actor.name,
+              actorName: actor.name,
               dpCost: cost,
               dpResource: dpItem.name,
               remaining: available - cost
