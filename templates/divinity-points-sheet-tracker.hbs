@@ -1,0 +1,89 @@
+{{#if isV2}}
+<div class="meter-group dp-bar">
+  <div class="label roboto-condensed-upper">
+    <span>{{name}}</span>
+    {{#if editable}}
+    <a class="config-button divinityPoints"
+       data-action="divinityPoints"
+       data-tooltip="{{localize "dnd5e-divinitypoints.ItemConfig"}} {{name}}"
+       aria-label="{{localize "dnd5e-divinitypoints.ItemConfig"}} {{name}}">
+      <i class="fas fa-cog"></i>
+    </a>
+    {{/if}}
+  </div>
+  <div class="meter sectioned dp-points"
+       data-item-id="{{_id}}"
+       data-entry-id="{{_id}}"
+       data-item-name="{{name}}">
+    <div class="progress dp-points"
+         role="meter"
+         aria-valuemin="0"
+         aria-valuenow="{{value}}"
+         aria-valuemax="{{max}}"
+         style="--bar-percentage: {{percent}}%">
+      <div class="label">
+        <span class="value">{{value}}</span>
+        <span class="separator"> / </span>
+        <span class="max">{{max}}</span>
+      </div>
+      <input hidden type="text" data-dtype="Number"
+             name="dp_value_{{_id}}"
+             class="dp_value seamless-input"
+             value="{{value}}">
+    </div>
+  </div>
+
+{{else if isNPC}}
+  <div class="meter-group">
+    <div class="label roboto-condensed-upper">
+      <span>{{name}}</span>
+      {{#if editable}}
+      <a class="config-button divinityPoints"
+         data-action="divinityPoints"
+         data-tooltip="{{localize "dnd5e-divinitypoints.ItemConfig"}} {{name}}"
+         aria-label="{{localize "dnd5e-divinitypoints.ItemConfig"}} {{name}}">
+        <i class="fas fa-cog"></i>
+      </a>
+      {{/if}}
+    </div>
+    <div class="meter sectioned dp-points"
+         data-item-id="{{_id}}"
+         data-entry-id="{{_id}}"
+         data-item-name="{{name}}">
+      <div class="progress dp-points"
+           role="meter"
+           aria-valuemin="0"
+           aria-valuenow="{{value}}"
+           aria-valuemax="{{max}}"
+           style="--bar-percentage: {{percent}}%">
+        <div class="label">
+          <span class="value">{{value}}</span>
+          <span class="separator"> / </span>
+          <span class="max">{{max}}</span>
+        </div>
+        <input hidden type="text" data-dtype="Number"
+               name="dp_value_{{_id}}"
+               class="dp_value seamless-input"
+               value="{{value}}">
+      </div>
+    </div>
+  </div>
+
+{{else}}
+  <li class="attribute initiative">
+    <h4 class="attribute-name box-title">{{name}}</h4>
+    {{#if editable}}
+    <a class="config-button divinityPoints"
+       data-action="divinityPoints"
+       data-tooltip="{{localize "dnd5e-divinitypoints.ItemConfig"}} {{name}}"
+       aria-label="{{localize "dnd5e-divinitypoints.ItemConfig"}} {{name}}">
+      <i class="fas fa-cog"></i>
+    </a>
+    {{/if}}
+    <div class="attribute-value multiple">
+      <span class="value">{{value}}</span>
+      <span class="sep">/</span>
+      <span class="max">{{max}}</span>
+    </div>
+  </li>
+{{/if}}

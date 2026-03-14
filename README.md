@@ -1,1 +1,2 @@
-# divinity_points
+# Divinity Points
+A FoundryVTT module for a Divinity Points resource system in D&D 5e. Adds a Divinity Points feature that scales with the character's Divinity modifier (@abilities.cua_0.mod), displays a resource bar on the character sheet, and allows other items and features to consume Divinity Points.

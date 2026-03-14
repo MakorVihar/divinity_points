@@ -1,0 +1,182 @@
+/* ============================================================
+   Divinity Points – CSS
+   Mirrors the structure of dnd5e-spellpoints/sp-styles.css
+   but uses --dp-* custom properties for independent theming.
+   ============================================================ */
+
+:root {
+  --dp-left-color:      #4a1060;
+  --dp-right-color:     #c89020;
+  --dp-animation-name:  dp-scroll;
+}
+
+/* ── Bar container ─────────────────────────────────────────── */
+
+.dp-bar-container {
+  margin-top: 0.5rem;
+}
+
+/* ── Meter group (v2 sheet) ────────────────────────────────── */
+
+.tidy5e-sheet.application:where(.quadrone) .meter-group.dp-bar .meter,
+.meter-group.dp-bar .meter {
+  border: 1px solid var(--dnd5e-color-gold);
+  border-radius: 4px;
+  font-family: var(--dnd5e-font-roboto);
+  font-weight: bold;
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.25);
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  height: 1.5rem;
+}
+
+.tidy5e-sheet.application:where(.quadrone) .meter-group.dp-bar .meter.progress,
+.meter-group.dp-bar .meter.progress,
+.meter-group.dp-bar .meter .progress {
+  --bar-percentage: 0%;
+  overflow: hidden;
+  align-items: center;
+  display: flex;
+}
+
+.meter-group.dp-bar .meter .label {
+  inline-size: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  position: relative;
+  padding-inline-start: 8px;
+  padding-inline-end: 12px;
+  color: var(--color-text-light-0);
+}
+
+/* Fill bar pseudo-element */
+.tidy5e-sheet.application:where(.quadrone) .meter-group.dp-bar .meter .progress::before,
+.tidy5e-sheet.application:where(.quadrone) .meter-group.dp-bar .meter.progress::before,
+.meter-group.dp-bar .meter.progress::before,
+.meter-group.dp-bar .meter .progress::before {
+  content: "";
+  position: absolute;
+  inline-size: calc(var(--bar-percentage) - 2px);
+  box-shadow: inset 0 1px 0 1px var(--dnd5e-highlight-40);
+  inset: 1px auto 1px 1px;
+  border-radius: 2px;
+  height: calc(100% - 2px);
+  border-right: 0;
+}
+
+/* Gradient fill */
+.meter-group.dp-bar .progress::before,
+.sheet.actor .sheet-body .sidebar .card .meter.dp-points .progress::before,
+.sheet.actor .side-panel .meter.dp-points .progress::before,
+.sheet.actor .sidebar .meter.dp-points .progress::before {
+  background: linear-gradient(
+    to right,
+    var(--dp-left-color),
+    var(--dp-right-color),
+    var(--dp-left-color)
+  );
+  background-size: 200% 100%;
+  animation: var(--dp-animation-name) 5s linear infinite;
+}
+
+/* ── Bar label / input toggle ──────────────────────────────── */
+
+.meter-group.dp-bar .label {
+  display: flex;
+  cursor: pointer;
+}
+
+.progress.dp-points > label {
+  cursor: pointer;
+}
+
+.progress.dp-points input.dp_value {
+  position: relative;
+  z-index: 2;
+  text-align: left;
+}
+
+/* ── Tidy5e overrides ──────────────────────────────────────── */
+
+.tidy5e-sheet .dp-bar {
+  font-size: 13px;
+  line-height: 1.2em;
+  text-transform: uppercase;
+  font-family: "Roboto Condensed";
+}
+
+.tidy5e-sheet .dp-bar .label {
+  font-size: 11px;
+  letter-spacing: 0.8px;
+}
+
+.tidy5e-sheet .config-button.divinityPoints {
+  display: none;
+  margin-left: auto;
+  font-size: 0.7rem;
+}
+
+.tidy5e-sheet.sheet-mode-edit .config-button.divinityPoints {
+  display: block;
+}
+
+.tidy5e-sheet input.seamless-input {
+  background: transparent;
+  border: 0;
+  text-align: left;
+}
+
+/* ── Config popup ──────────────────────────────────────────── */
+
+.divinitypoints.application a.header-button.control.close {
+  text-indent: -999em;
+  line-height: 0;
+  margin: 0;
+}
+
+.divinitypoints.application a.header-button.control.close > i {
+  text-indent: 0;
+}
+
+.dp-popup .dp-number {
+  height: 100%;
+  font-size: 3em !important;
+  border: 1px solid #830dab66 !important;
+}
+
+/* ── Activity consumption fieldset ────────────────────────── */
+
+fieldset.dp-activity-consumption {
+  border: 2px solid var(--dnd5e-color-gold);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+fieldset.dp-activity-consumption legend {
+  font-weight: bold;
+  padding: 0 4px;
+  color: var(--dp-right-color);
+}
+
+fieldset.dp-activity-consumption .hint {
+  font-size: 0.75em;
+  opacity: 0.8;
+  margin: 0;
+  padding-top: 2px;
+}
+
+/* ── Scrolling animation ───────────────────────────────────── */
+
+@keyframes dp-scroll {
+  0%   { background-position:    0 0; }
+  100% { background-position: -200% 0%; }
+}
+
+@-webkit-keyframes dp-scroll {
+  0%   { background-position:    0 0; }
+  100% { background-position: -200% 0%; }
+}
