@@ -12,11 +12,11 @@ export class DpSettingsForm extends HandlebarsApplicationMixin(ApplicationV2) {
       closeOnSubmit:  true,
       submitOnChange: false,
     },
-    position: { width: 400 },
+    position: { width: 420 },
     tag: "form",
     window: {
       contentClasses: ["standard-form"],
-      icon:  "fas fa-khanda",
+      icon:  "fas fa-palette",
       title: `${DP_MODULE_NAME}.colorSettingsTitle`,
     },
   };
@@ -39,6 +39,31 @@ export class DpSettingsForm extends HandlebarsApplicationMixin(ApplicationV2) {
         { type: "submit", icon: "fa-solid fa-save", label: "SETTINGS.Save" },
       ],
     };
+  }
+
+  /** Update preview bar live whenever a color or animate value changes */
+  _onChangeForm(formConfig, event) {
+    super._onChangeForm(formConfig, event);
+    const form = this.element;
+    if (!form) return;
+
+    const colorL  = form.querySelector("color-picker[name='colorL']")?.value
+      ?? game.settings.get(DP_MODULE_NAME, "dpColorL");
+    const colorR  = form.querySelector("color-picker[name='colorR']")?.value
+      ?? game.settings.get(DP_MODULE_NAME, "dpColorR");
+    const animate = form.querySelector("input[name='animate']")?.checked ?? true;
+
+    const fill = form.querySelector(".dp-preview-fill");
+    if (fill) {
+      fill.style.background = `linear-gradient(to right, ${colorL}, ${colorR}, ${colorL})`;
+      fill.style.backgroundSize = "200% 100%";
+      fill.style.animationName  = animate ? "dp-scroll" : "none";
+    }
+  }
+
+  /** Set preview on initial render */
+  _onRender(context, options) {
+    this._onChangeForm({}, {});
   }
 
   static async #onSubmit(event, form, formData) {
