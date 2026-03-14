@@ -206,3 +206,14 @@ fieldset.dp-activity-consumption .hint {
   width: 100%;
   animation: dp-scroll 5s linear infinite;
 }
+
+/* ── Module settings panel — widen label, narrow input column ─ */
+
+#client-settings .form-group[data-setting-id^="dnd5e-divinitypoints"] > label {
+  flex: 4;
+}
+
+#client-settings .form-group[data-setting-id^="dnd5e-divinitypoints"] > .form-fields {
+  flex: 1;
+  min-width: 0;
+}
