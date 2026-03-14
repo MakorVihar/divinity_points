@@ -23,5 +23,7 @@
   "dnd5e-divinitypoints.notEnoughDp": "{actorName} does not have enough {dpResource} to use this ability.",
   "dnd5e-divinitypoints.usedDp": "{actorName} spent {dpCost} {dpResource}. {remaining} remaining.",
   "dnd5e-divinitypoints.starterItemReady": "Divinity Points: \"{name}\" has been added to your world's Items tab. Drag it onto any character sheet to grant them Divinity Points. To make an ability cost Divinity Points, open it → Activation → Consumption → add entry → Type: Divinity Points.",
-  "dnd5e-divinitypoints.consumptionLabel": "Consume {dpResource}"
+  "dnd5e-divinitypoints.consumptionLabel": "Consume {dpResource}",
+  "dnd5e-divinitypoints.dpBlockOnInsufficient": "Block ability if Divinity Points are insufficient",
+  "dnd5e-divinitypoints.dpBlockOnInsufficientHint": "When enabled, abilities with a Divinity Points cost will be blocked from firing if the character lacks sufficient points or has no Divinity Points feature on their sheet. A chat message is always shown regardless."
 }

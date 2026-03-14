@@ -2,70 +2,26 @@ import { DP_MODULE_NAME, DP_ITEM_ID } from "./constants.js";
 import { ActorDivinityPointsConfig } from "./actor-bar-config.js";
 
 /**
- * Returns the plain config object registered in CONFIG.DND5E.activityConsumptionTypes.
+ * Returns the plain config object for CONFIG.DND5E.activityConsumptionTypes.
  *
- * From consumption-targets-field.mjs the base consume() method does:
- *   const typeConfig = CONFIG.DND5E.activityConsumptionTypes[this.type];
- *   if ( !typeConfig?.consume ) throw new Error("Consumption types must define consumption method.");
- *   await typeConfig.consume.call(this, config, updates);
- *
- * So the value must be a plain object { label, consume, consumptionLabels? }.
- * consume() is called with `this` = the ConsumptionTargetData instance, which
- * exposes this.activity, this.actor, this.item, this.value, this.resolveCost().
+ * consume() is called as typeConfig.consume.call(consumptionTargetInstance, config, updates)
+ * Only reached when validation (in preActivityConsumption hook) has already passed,
+ * so we can push directly into updates.item without re-checking availability.
  */
 export function buildConsumptionConfig() {
   return {
     label: game.i18n.localize(`${DP_MODULE_NAME}.consumptionTypeLabel`),
 
-    /**
-     * Called as: typeConfig.consume.call(consumptionTargetDataInstance, config, updates)
-     * `this` is the ConsumptionTargetData instance for this target entry.
-     */
     async consume(config, updates) {
-      const actor = this.actor;
+      const actor  = this.actor;
       const dpItem = actor ? DivinityPoints.getDivinityPointsItem(actor) : null;
+      if (!dpItem) return; // validated in preActivityConsumption; shouldn't reach here
 
-      /** check if message should be visible to all or just player+gm */
-      let SpeakTo = [];
-      if (DivinityPoints.settings.dpChatPrivate) {
-        SpeakTo = game.users.filter(u => u.isGM);
-      }
-
-
-      if (!dpItem) {
-        ChatMessage.create({
-          content: "<i style='color:red;'>" + game.i18n.format(DP_MODULE_NAME + ".noDpItem", { actorName: actor.name }) + "</i>",
-          speaker: ChatMessage.getSpeaker({ alias: actor.name }),
-          isContentVisible: false,
-          isAuthor: true,
-          whisper: SpeakTo
-        });
-        return;
-      }
-
-      // Use resolveCost() — the proper helper on ConsumptionTargetData that
-      // handles scaling, roll formulas, etc.
       const costRoll = await this.resolveCost({ config, rolls: updates.rolls });
       const cost = Math.max(0, Math.floor(costRoll.total));
       if (cost <= 0) return;
 
       const spent = dpItem.system.uses.spent ?? 0;
-      const available = dpItem.system.uses.max - spent;
-
-      if (available < cost) {
-        ChatMessage.create({
-          content: "<i style='color:red;'>" + game.i18n.format(DP_MODULE_NAME + ".notEnoughDp", { actorName: actor.name, dpResource: dpItem.name }) + "</i>",
-          speaker: ChatMessage.getSpeaker({ alias: actor.name }),
-          isContentVisible: false,
-          isAuthor: true,
-          whisper: SpeakTo
-        });
-        return;
-      }
-
-      // Push into updates.item — same array used by all built-in types.
-      // dnd5e applies it atomically and records it in chat message flags
-      // so the Refund button works automatically.
       if (!Array.isArray(updates.item)) updates.item = [];
       const existing = updates.item.find(u => u._id === dpItem._id);
       if (existing) {
@@ -74,52 +30,114 @@ export function buildConsumptionConfig() {
         updates.item.push({ _id: dpItem._id, "system.uses.spent": spent + cost });
       }
 
+      // Chat message on successful use
+      const whisper = DivinityPoints.settings.dpChatPrivate
+        ? game.users.filter(u => u.isGM) : [];
       ChatMessage.create({
-        content: "<i style='color:green;'>" +
-          game.i18n.format(DP_MODULE_NAME + ".usedDp",
-            {
-              ActorName: actor.name,
-              dpCost: cost,
-              dpResource: dpItem.name,
-              remaining: available - cost
-            }) + "</i>",
-        speaker: ChatMessage.getSpeaker({ alias: actor.name }),
+        content: `<i style='color:green;'>${game.i18n.format(`${DP_MODULE_NAME}.usedDp`, {
+          actorName:  actor.name,
+          dpCost:     cost,
+          dpResource: dpItem.name,
+          remaining:  (dpItem.system.uses.max - spent) - cost,
+        })}</i>`,
+        speaker:          ChatMessage.getSpeaker({ alias: actor.name }),
         isContentVisible: false,
-        isAuthor: true,
-        whisper: SpeakTo
+        isAuthor:         true,
+        whisper,
       });
     },
 
-    /**
-     * Called as: typeConfig.consumptionLabels.call(consumptionTargetDataInstance, config, options)
-     * Returns { label, hint, warn } shown in the usage dialog.
-     */
     consumptionLabels(config, options = {}) {
-      const actor = this.actor;
+      const actor  = this.actor;
       const dpItem = actor ? DivinityPoints.getDivinityPointsItem(actor) : null;
-      const name = dpItem?.name
+      const name   = dpItem?.name
         ?? game.i18n.localize(`${DP_MODULE_NAME}.consumptionTypeLabel`);
       const available = dpItem
-        ? (dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0))
-        : 0;
+        ? (dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0)) : 0;
 
-      const costRoll = this.resolveCost({ config, evaluate: false });
+      const costRoll   = this.resolveCost({ config, evaluate: false });
       const simpleCost = costRoll.isDeterministic
-        ? costRoll.evaluateSync().total
-        : NaN;
-      const costDisplay = costRoll.isDeterministic ? String(simpleCost) : costRoll.formula;
+        ? costRoll.evaluateSync().total : NaN;
 
       return {
         label: game.i18n.format(`${DP_MODULE_NAME}.consumptionLabel`, { dpResource: name }),
-        hint: game.i18n.format(`${DP_MODULE_NAME}.dpAvailableHint`, {
-          current: available,
-          max: dpItem?.system.uses.max ?? 0,
+        hint:  game.i18n.format(`${DP_MODULE_NAME}.dpAvailableHint`, {
+          current:    available,
+          max:        dpItem?.system.uses.max ?? 0,
           dpResource: name,
         }),
         warn: !isNaN(simpleCost) && simpleCost > available,
       };
     },
   };
+}
+
+/**
+ * Hook: dnd5e.preActivityConsumption
+ *
+ * Runs before any consumption. Validates DP availability and sends a chat
+ * message for both success-path info and failure. If the "block on failure"
+ * setting is enabled, returns false to prevent the activity from firing.
+ *
+ * Returns false to block, undefined to allow.
+ */
+export async function validateDpConsumption(activity, usageConfig, messageConfig) {
+  const actor = activity?.actor;
+  if (!actor || !DivinityPoints.isActorCharacter(actor)) return;
+
+  // Find any divinityPoints consumption targets on this activity
+  const dpTargets = (activity?.consumption?.targets ?? [])
+    .filter(t => t.type === "divinityPoints");
+  if (!dpTargets.length) return;
+
+  const shouldBlock = DivinityPoints.settings.dpBlockOnInsufficient;
+  const whisper     = DivinityPoints.settings.dpChatPrivate
+    ? game.users.filter(u => u.isGM) : [];
+
+  const dpItem = DivinityPoints.getDivinityPointsItem(actor);
+
+  // ── No DP item on the sheet ──────────────────────────────────────────────
+  if (!dpItem) {
+    ChatMessage.create({
+      content: `<i style='color:red;'>${game.i18n.format(
+        `${DP_MODULE_NAME}.noDpItem`, { actorName: actor.name }
+      )}</i>`,
+      speaker:          ChatMessage.getSpeaker({ alias: actor.name }),
+      isContentVisible: false,
+      isAuthor:         true,
+      whisper,
+    });
+    if (shouldBlock) return false;
+    return;
+  }
+
+  // ── Check total cost across all DP targets ───────────────────────────────
+  let totalCost = 0;
+  for (const t of dpTargets) {
+    try {
+      const roll = t.resolveCost({ config: usageConfig, evaluate: false });
+      totalCost += Math.max(0, Math.floor(
+        roll.isDeterministic ? roll.evaluateSync().total : 0
+      ));
+    } catch (e) { /* non-deterministic formulas are checked at consume() time */ }
+  }
+
+  const available = dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0);
+
+  // ── Not enough DP ────────────────────────────────────────────────────────
+  if (totalCost > 0 && available < totalCost) {
+    ChatMessage.create({
+      content: `<i style='color:red;'>${game.i18n.format(
+        `${DP_MODULE_NAME}.notEnoughDp`,
+        { actorName: actor.name, dpResource: dpItem.name }
+      )}</i>`,
+      speaker:          ChatMessage.getSpeaker({ alias: actor.name }),
+      isContentVisible: false,
+      isAuthor:         true,
+      whisper,
+    });
+    if (shouldBlock) return false;
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -129,13 +147,14 @@ export class DivinityPoints {
 
   static get defaultSettings() {
     return {
-      dpResource: "Divinity Points",
-      dpActivateBar: true,
-      dpAnimateBar: true,
-      dpColorL: "#4a1060",
-      dpColorR: "#c89020",
-      dpGmOnly: true,
-      dpChatPrivate: false,
+      dpResource:            "Divinity Points",
+      dpActivateBar:         true,
+      dpAnimateBar:          true,
+      dpColorL:              "#4a1060",
+      dpColorR:              "#c89020",
+      dpGmOnly:              true,
+      dpChatPrivate:         false,
+      dpBlockOnInsufficient: true,
     };
   }
 
@@ -143,13 +162,14 @@ export class DivinityPoints {
     if (!game?.settings) return DivinityPoints.defaultSettings;
     try {
       return {
-        dpResource: game.settings.get(DP_MODULE_NAME, "dpResource"),
-        dpActivateBar: game.settings.get(DP_MODULE_NAME, "dpActivateBar"),
-        dpAnimateBar: game.settings.get(DP_MODULE_NAME, "dpAnimateBar"),
-        dpColorL: game.settings.get(DP_MODULE_NAME, "dpColorL"),
-        dpColorR: game.settings.get(DP_MODULE_NAME, "dpColorR"),
-        dpGmOnly: game.settings.get(DP_MODULE_NAME, "dpGmOnly"),
-        dpChatPrivate: game.settings.get(DP_MODULE_NAME, "dpChatPrivate"),
+        dpResource:            game.settings.get(DP_MODULE_NAME, "dpResource"),
+        dpActivateBar:         game.settings.get(DP_MODULE_NAME, "dpActivateBar"),
+        dpAnimateBar:          game.settings.get(DP_MODULE_NAME, "dpAnimateBar"),
+        dpColorL:              game.settings.get(DP_MODULE_NAME, "dpColorL"),
+        dpColorR:              game.settings.get(DP_MODULE_NAME, "dpColorR"),
+        dpGmOnly:              game.settings.get(DP_MODULE_NAME, "dpGmOnly"),
+        dpChatPrivate:         game.settings.get(DP_MODULE_NAME, "dpChatPrivate"),
+        dpBlockOnInsufficient: game.settings.get(DP_MODULE_NAME, "dpBlockOnInsufficient"),
       };
     } catch (e) {
       return DivinityPoints.defaultSettings;
@@ -158,7 +178,7 @@ export class DivinityPoints {
 
   static setDpColors() {
     const s = DivinityPoints.settings;
-    document.documentElement.style.setProperty("--dp-left-color", s.dpColorL);
+    document.documentElement.style.setProperty("--dp-left-color",  s.dpColorL);
     document.documentElement.style.setProperty("--dp-right-color", s.dpColorR);
     document.documentElement.style.setProperty(
       "--dp-animation-name", s.dpAnimateBar ? "dp-scroll" : "none"
@@ -182,7 +202,7 @@ export class DivinityPoints {
   static isDivinityItem(item) {
     const sourceOk = (
       item.flags?.core?.sourceId ===
-      `Compendium.${DP_MODULE_NAME}.module-items.Item.${DP_ITEM_ID}` ||
+        `Compendium.${DP_MODULE_NAME}.module-items.Item.${DP_ITEM_ID}` ||
       item.system?.source?.custom === DivinityPoints.settings.dpResource
     );
     return item.type === "feat" && sourceOk;
@@ -190,7 +210,7 @@ export class DivinityPoints {
 
   static getDivinityPointsItem(actor) {
     if (!actor) return false;
-    const items = foundry.utils.getProperty(actor, "items");
+    const items  = foundry.utils.getProperty(actor, "items");
     const flagId = DivinityPoints.getActorFlagDpItem(actor);
     if (flagId) {
       const found = items.get(flagId);
@@ -220,7 +240,7 @@ export class DivinityPoints {
   static async updateDivinityItem(item, value = null, max = null, spent = null) {
     if (!item) return;
     const update = {};
-    if (max !== null) update["system.uses.max"] = max;
+    if (max   !== null) update["system.uses.max"]   = max;
     if (spent !== null) update["system.uses.spent"] = spent;
     if (value !== null) {
       const effectiveMax = max ?? item.system.uses.max;
@@ -268,7 +288,7 @@ export class DivinityPoints {
     let currentMax = await DivinityPoints.withActorData(dpItem.system.uses.max, actor);
     let currentVal = currentMax - (dpItem.system.uses.spent ?? 0);
 
-    if (max !== undefined && max !== null && max !== "")
+    if (max  !== undefined && max  !== null && max  !== "")
       currentMax = await DivinityPoints.withActorData(String(max), actor);
     if (uses !== undefined && uses !== null && uses !== "")
       currentVal = Math.max(0, Math.min(
@@ -284,13 +304,13 @@ export class DivinityPoints {
     if (!["character", "npc"].includes(data.actor?.type)) return;
     if (!DivinityPoints.settings.dpActivateBar) return;
 
-    const actor = data.actor;
+    const actor  = data.actor;
     const dpItem = DivinityPoints.getDivinityPointsItem(actor);
     if (!dpItem) return;
 
-    const max = dpItem.system.uses.max;
-    const spent = dpItem.system.uses.spent ?? 0;
-    const value = max - spent;
+    const max     = dpItem.system.uses.max;
+    const spent   = dpItem.system.uses.spent ?? 0;
+    const value   = max - spent;
     const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0;
 
     const rendered = await foundry.applications.handlebars.renderTemplate(
@@ -305,7 +325,7 @@ export class DivinityPoints {
     const container = $('<div class="dp-bar-container"></div>').append(rendered);
 
     let sidebarSel = ".sidebar .stats";
-    let append = true;
+    let append     = true;
     if (app.classList?.value?.includes("tidy5e-sheet")) {
       sidebarSel = ".attributes .side-panel, .tidy-tab.favorites"; append = false;
     } else if (type === "v2") {
@@ -318,7 +338,7 @@ export class DivinityPoints {
 
     $(`${sidebarSel} .dp-bar-container`, html).remove();
     if (append) $(sidebarSel, html).after(container);
-    else $(sidebarSel, html).prepend(container);
+    else        $(sidebarSel, html).prepend(container);
 
     $(".config-button.divinityPoints", html).off("click").on("click", (e) => {
       e.preventDefault(); e.stopPropagation();

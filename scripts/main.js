@@ -1,5 +1,5 @@
 import { DP_MODULE_NAME } from "./constants.js";
-import { DivinityPoints, buildConsumptionConfig } from "./divinitypoints.js";
+import { DivinityPoints, buildConsumptionConfig, validateDpConsumption } from "./divinitypoints.js";
 import { ActorDivinityPointsConfig } from "./actor-bar-config.js";
 
 Handlebars.registerHelper("dpFormat", (path, ...args) => {
@@ -9,12 +9,6 @@ Handlebars.registerHelper("dpFormat", (path, ...args) => {
 Hooks.on("init", () => {
   console.log(`${DP_MODULE_NAME} | Initialising Divinity Points module`);
 
-  // Register as a plain config object, exactly like dnd5e's built-in types.
-  // The base ConsumptionTargetData.consume() does:
-  //   const typeConfig = CONFIG.DND5E.activityConsumptionTypes[this.type];
-  //   if ( !typeConfig?.consume ) throw "Consumption types must define consumption method."
-  //   await typeConfig.consume.call(this, config, updates);
-  // So we provide { label, consume, consumptionLabels } — no class needed.
   CONFIG.DND5E.activityConsumptionTypes.divinityPoints = buildConsumptionConfig();
 
   game.dnd5e.config.featureTypes.class.subtypes.dp =
@@ -51,6 +45,11 @@ Hooks.on("init", () => {
     name: `${DP_MODULE_NAME}.dpChatPrivate`, hint: `${DP_MODULE_NAME}.dpChatPrivateHint`,
     scope: "world", config: true, type: Boolean, default: false,
   });
+  game.settings.register(DP_MODULE_NAME, "dpBlockOnInsufficient", {
+    name: `${DP_MODULE_NAME}.dpBlockOnInsufficient`,
+    hint: `${DP_MODULE_NAME}.dpBlockOnInsufficientHint`,
+    scope: "world", config: true, type: Boolean, default: true,
+  });
   game.settings.register(DP_MODULE_NAME, "starterItemCreated", {
     scope: "world", config: false, type: Boolean, default: false,
   });
@@ -83,8 +82,7 @@ Hooks.on("ready", async () => {
     "go to <em>Activation → Consumption</em>, add a new consumption entry,",
     "and choose <strong>Divinity Points</strong> from the Type dropdown.</p>",
     "<hr />",
-    "<p><em>Maximum Divinity Points = Divinity modifier",
-    "(<code>@abilities.cua_0.mod</code>)</em></p>",
+    "<p><em>Maximum Divinity Points = Divinity modifier (<code>@abilities.cua_0.mod</code>)</em></p>",
   ].join("\n");
 
   try {
@@ -129,6 +127,12 @@ Hooks.on("updateActor", async (actor) => {
   if (!DivinityPoints.userHasActorOwnership(actor)) return;
   const dpItem = DivinityPoints.getDivinityPointsItem(actor);
   if (dpItem) await DivinityPoints.recalculateMax(actor, dpItem);
+});
+
+// Validate DP availability BEFORE consumption runs.
+// Returns false to block the activity entirely when the setting is enabled.
+Hooks.on("dnd5e.preActivityConsumption", async (activity, usageConfig, messageConfig) => {
+  return await validateDpConsumption(activity, usageConfig, messageConfig);
 });
 
 Hooks.on("renderActorSheet5eCharacter2", (app, html, data) => {
