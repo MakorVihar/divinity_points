@@ -1,0 +1,29 @@
+name: Release Automation
+
+on:
+  release:
+    types: [published] # Triggers when you click "Publish" on a release
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Essential: allows the action to upload files to your release
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create Custom Zip
+        # This creates the zip with your exact name.
+        # It excludes git history and the workflows folder to keep it clean.
+        run: |
+          zip -r dnd5e-divinitypoints.zip . -x "*.git*" ".github/*"
+      - name: Upload Assets to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dnd5e-divinitypoints.zip
+            module.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
