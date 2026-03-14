@@ -87,8 +87,9 @@ Hooks.on("init", () => {
 
 Hooks.on("ready", async () => {
   if (!game.user.isGM) return;
-  if (game.settings.get(DP_MODULE_NAME, "starterItemCreated")) return;
 
+  // Always check whether the item actually exists — the flag alone isn't enough
+  // because the GM may have deleted the item from the Items tab.
   const existing = game.items.find(
     i => i.type === "feat" &&
       i.system?.source?.custom === DivinityPoints.settings.dpResource
@@ -97,6 +98,9 @@ Hooks.on("ready", async () => {
     await game.settings.set(DP_MODULE_NAME, "starterItemCreated", true);
     return;
   }
+
+  // Item is missing — recreate it regardless of the flag
+  await game.settings.set(DP_MODULE_NAME, "starterItemCreated", false);
 
   const description = [
     "<h1>Divinity Points</h1>",
