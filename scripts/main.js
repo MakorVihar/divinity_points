@@ -29,12 +29,16 @@ Hooks.on("init", () => {
   });
   game.settings.register(DP_MODULE_NAME, "dpColorL", {
     name: `${DP_MODULE_NAME}.dpResourceBarLeftColor`,
-    scope: "world", config: true, type: String, default: "#4a1060",
+    scope: "world", config: true,
+    type: new foundry.data.fields.ColorField({ required: true, nullable: false, initial: "#4a1060" }),
+    default: "#4a1060",
     onChange: () => DivinityPoints.setDpColors(),
   });
   game.settings.register(DP_MODULE_NAME, "dpColorR", {
     name: `${DP_MODULE_NAME}.dpResourceBarRightColor`,
-    scope: "world", config: true, type: String, default: "#c89020",
+    scope: "world", config: true,
+    type: new foundry.data.fields.ColorField({ required: true, nullable: false, initial: "#c89020" }),
+    default: "#c89020",
     onChange: () => DivinityPoints.setDpColors(),
   });
   game.settings.register(DP_MODULE_NAME, "dpGmOnly", {
