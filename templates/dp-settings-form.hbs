@@ -1,0 +1,37 @@
+ <div class="dp-settings-form">
+
+  {{!-- Left colour --}}
+  <div class="form-group">
+    <label>{{localize "dnd5e-divinitypoints.dpResourceBarLeftColor"}}</label>
+    <div class="form-fields">
+      <color-picker name="colorL" value="{{colorL}}"></color-picker>
+    </div>
+  </div>
+
+  {{!-- Right colour --}}
+  <div class="form-group">
+    <label>{{localize "dnd5e-divinitypoints.dpResourceBarRightColor"}}</label>
+    <div class="form-fields">
+      <color-picker name="colorR" value="{{colorR}}"></color-picker>
+    </div>
+  </div>
+
+  {{!-- Animate --}}
+  <div class="form-group">
+    <label>{{localize "dnd5e-divinitypoints.dpResourceBarAnimate"}}</label>
+    <div class="form-fields">
+      <input type="checkbox" name="animate" {{#if animate}}checked{{/if}} />
+    </div>
+  </div>
+
+  {{!-- Live preview --}}
+  <div class="form-group">
+    <label>{{localize "dnd5e-divinitypoints.barPreview"}}</label>
+    <div class="form-fields">
+      <div class="dp-preview-bar">
+        <div class="dp-preview-fill"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
