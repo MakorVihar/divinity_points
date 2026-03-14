@@ -1,27 +1,71 @@
 import { DP_MODULE_NAME, DP_ITEM_ID } from "./constants.js";
 import { ActorDivinityPointsConfig } from "./actor-bar-config.js";
 
-/**
- * Returns the plain config object for CONFIG.DND5E.activityConsumptionTypes.
- *
- * consume() is called as typeConfig.consume.call(consumptionTargetInstance, config, updates)
- * Only reached when validation (in preActivityConsumption hook) has already passed,
- * so we can push directly into updates.item without re-checking availability.
- */
+// ──────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────────────────────────────────────
+
+function dpChatMessage(content, actorName, whisper) {
+  ChatMessage.create({
+    content,
+    speaker:          ChatMessage.getSpeaker({ alias: actorName }),
+    isContentVisible: false,
+    isAuthor:         true,
+    whisper,
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Consumption config — plain object registered in CONFIG.DND5E.activityConsumptionTypes
+//
+// From consumption-targets-field.mjs:
+//   const typeConfig = CONFIG.DND5E.activityConsumptionTypes[this.type];
+//   if ( !typeConfig?.consume ) throw new Error("Consumption types must define consumption method.");
+//   await typeConfig.consume.call(this, config, updates);
+// ──────────────────────────────────────────────────────────────────────────────
+
 export function buildConsumptionConfig() {
   return {
     label: game.i18n.localize(`${DP_MODULE_NAME}.consumptionTypeLabel`),
 
+    // consume() is only called when preActivityConsumption did NOT block.
+    // It still re-validates availability, because non-deterministic formulas
+    // can't be checked synchronously in the hook.
     async consume(config, updates) {
       const actor  = this.actor;
       const dpItem = actor ? DivinityPoints.getDivinityPointsItem(actor) : null;
-      if (!dpItem) return; // validated in preActivityConsumption; shouldn't reach here
+      const whisper = DivinityPoints.settings.dpChatPrivate
+        ? game.users.filter(u => u.isGM) : [];
+
+      if (!dpItem) {
+        dpChatMessage(
+          `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.noDpItem`,
+            { actorName: actor?.name ?? "?" })}</i>`,
+          actor?.name ?? "?", whisper
+        );
+        // Don't push anything — DP just wasn't deducted, activity still fires.
+        // Blocking is handled in the synchronous preActivityConsumption hook.
+        return;
+      }
 
       const costRoll = await this.resolveCost({ config, rolls: updates.rolls });
-      const cost = Math.max(0, Math.floor(costRoll.total));
+      const cost     = Math.max(0, Math.floor(costRoll.total));
       if (cost <= 0) return;
 
-      const spent = dpItem.system.uses.spent ?? 0;
+      const spent     = dpItem.system.uses.spent ?? 0;
+      const available = dpItem.system.uses.max - spent;
+
+      if (available < cost) {
+        dpChatMessage(
+          `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.notEnoughDp`,
+            { actorName: actor.name, dpResource: dpItem.name })}</i>`,
+          actor.name, whisper
+        );
+        // Don't push — prevents going below zero. Activity fires unless blocked by hook.
+        return;
+      }
+
+      // Happy path — push into updates.item so dnd5e records it for Refund.
       if (!Array.isArray(updates.item)) updates.item = [];
       const existing = updates.item.find(u => u._id === dpItem._id);
       if (existing) {
@@ -30,21 +74,15 @@ export function buildConsumptionConfig() {
         updates.item.push({ _id: dpItem._id, "system.uses.spent": spent + cost });
       }
 
-      // Chat message on successful use
-      const whisper = DivinityPoints.settings.dpChatPrivate
-        ? game.users.filter(u => u.isGM) : [];
-      ChatMessage.create({
-        content: `<i style='color:green;'>${game.i18n.format(`${DP_MODULE_NAME}.usedDp`, {
+      dpChatMessage(
+        `<i style='color:green;'>${game.i18n.format(`${DP_MODULE_NAME}.usedDp`, {
           actorName:  actor.name,
           dpCost:     cost,
           dpResource: dpItem.name,
-          remaining:  (dpItem.system.uses.max - spent) - cost,
+          remaining:  available - cost,
         })}</i>`,
-        speaker:          ChatMessage.getSpeaker({ alias: actor.name }),
-        isContentVisible: false,
-        isAuthor:         true,
-        whisper,
-      });
+        actor.name, whisper
+      );
     },
 
     consumptionLabels(config, options = {}) {
@@ -72,20 +110,22 @@ export function buildConsumptionConfig() {
   };
 }
 
-/**
- * Hook: dnd5e.preActivityConsumption
- *
- * Runs before any consumption. Validates DP availability and sends a chat
- * message for both success-path info and failure. If the "block on failure"
- * setting is enabled, returns false to prevent the activity from firing.
- *
- * Returns false to block, undefined to allow.
- */
-export async function validateDpConsumption(activity, usageConfig, messageConfig) {
+// ──────────────────────────────────────────────────────────────────────────────
+// validateDpConsumption — registered on dnd5e.preActivityConsumption
+//
+// MUST be synchronous. dnd5e calls:
+//   if ( Hooks.call("dnd5e.preActivityConsumption", ...) === false ) return false;
+// Hooks.call is synchronous — an async handler returns a Promise (truthy),
+// so it can never block. We therefore do everything synchronously here:
+//   • use resolveCost({ evaluate: false }) + evaluateSync() for deterministic formulas
+//   • fire ChatMessage.create() as fire-and-forget (no await)
+//   • return false synchronously to block
+// ──────────────────────────────────────────────────────────────────────────────
+
+export function validateDpConsumption(activity, usageConfig) {
   const actor = activity?.actor;
   if (!actor || !DivinityPoints.isActorCharacter(actor)) return;
 
-  // Find any divinityPoints consumption targets on this activity
   const dpTargets = (activity?.consumption?.targets ?? [])
     .filter(t => t.type === "divinityPoints");
   if (!dpTargets.length) return;
@@ -94,49 +134,52 @@ export async function validateDpConsumption(activity, usageConfig, messageConfig
   const whisper     = DivinityPoints.settings.dpChatPrivate
     ? game.users.filter(u => u.isGM) : [];
 
-  const dpItem = DivinityPoints.getDivinityPointsItem(actor);
+  const dpItem    = DivinityPoints.getDivinityPointsItem(actor);
+  const available = dpItem
+    ? (dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0)) : 0;
 
   // ── No DP item on the sheet ──────────────────────────────────────────────
   if (!dpItem) {
-    ChatMessage.create({
-      content: `<i style='color:red;'>${game.i18n.format(
+    dpChatMessage(
+      `<i style='color:red;'>${game.i18n.format(
         `${DP_MODULE_NAME}.noDpItem`, { actorName: actor.name }
       )}</i>`,
-      speaker:          ChatMessage.getSpeaker({ alias: actor.name }),
-      isContentVisible: false,
-      isAuthor:         true,
-      whisper,
-    });
+      actor.name, whisper
+    );
     if (shouldBlock) return false;
     return;
   }
 
-  // ── Check total cost across all DP targets ───────────────────────────────
+  // ── Sum cost synchronously across all DP targets ─────────────────────────
   let totalCost = 0;
+  let hasNonDeterministic = false;
+
   for (const t of dpTargets) {
     try {
       const roll = t.resolveCost({ config: usageConfig, evaluate: false });
-      totalCost += Math.max(0, Math.floor(
-        roll.isDeterministic ? roll.evaluateSync().total : 0
-      ));
-    } catch (e) { /* non-deterministic formulas are checked at consume() time */ }
+      if (roll.isDeterministic) {
+        totalCost += Math.max(0, Math.floor(roll.evaluateSync().total));
+      } else {
+        hasNonDeterministic = true;
+      }
+    } catch (e) {
+      hasNonDeterministic = true;
+    }
   }
 
-  const available = dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0);
+  // Non-deterministic formulas can't be checked here — consume() will handle them.
+  if (hasNonDeterministic) return;
 
   // ── Not enough DP ────────────────────────────────────────────────────────
   if (totalCost > 0 && available < totalCost) {
-    ChatMessage.create({
-      content: `<i style='color:red;'>${game.i18n.format(
+    dpChatMessage(
+      `<i style='color:red;'>${game.i18n.format(
         `${DP_MODULE_NAME}.notEnoughDp`,
         { actorName: actor.name, dpResource: dpItem.name }
       )}</i>`,
-      speaker:          ChatMessage.getSpeaker({ alias: actor.name }),
-      isContentVisible: false,
-      isAuthor:         true,
-      whisper,
-    });
-    if (shouldBlock) return false;
+      actor.name, whisper
+    );
+    if (shouldBlock) return false; // synchronous — Hooks.call sees this
   }
 }
 

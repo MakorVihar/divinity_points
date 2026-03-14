@@ -129,10 +129,11 @@ Hooks.on("updateActor", async (actor) => {
   if (dpItem) await DivinityPoints.recalculateMax(actor, dpItem);
 });
 
-// Validate DP availability BEFORE consumption runs.
-// Returns false to block the activity entirely when the setting is enabled.
-Hooks.on("dnd5e.preActivityConsumption", async (activity, usageConfig, messageConfig) => {
-  return await validateDpConsumption(activity, usageConfig, messageConfig);
+// SYNCHRONOUS — dnd5e uses Hooks.call() which cannot await async handlers.
+// validateDpConsumption returns false synchronously to block the activity.
+// ChatMessage.create() inside it is fire-and-forget (no await needed).
+Hooks.on("dnd5e.preActivityConsumption", (activity, usageConfig, messageConfig) => {
+  return validateDpConsumption(activity, usageConfig, messageConfig);
 });
 
 Hooks.on("renderActorSheet5eCharacter2", (app, html, data) => {
