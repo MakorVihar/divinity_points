@@ -25,8 +25,7 @@ function dpChatMessage(content, actorName, whisper) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 export function buildConsumptionConfig() {
-  return {
-    label: "Divinity Points", // updated by onChange handler when dpResource changes
+  const config = {
 
     // consume() is only called when preActivityConsumption did NOT block.
     // It still re-validates availability, because non-deterministic formulas
@@ -107,6 +106,16 @@ export function buildConsumptionConfig() {
       };
     },
   };
+
+  // Use a getter so the dropdown label always reflects the current setting value,
+  // even after a rename — no need to re-register or patch anything.
+  Object.defineProperty(config, "label", {
+    get() { return DivinityPoints.settings.dpResource; },
+    enumerable: true,
+    configurable: true,
+  });
+
+  return config;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
