@@ -26,8 +26,7 @@ function dpChatMessage(content, actorName, whisper) {
 
 export function buildConsumptionConfig() {
   return {
-    // Read the setting at call time so it reflects any rename
-    get label() { return DivinityPoints.settings.dpResource; },
+    label: "Divinity Points", // updated by onChange handler when dpResource changes
 
     // consume() is only called when preActivityConsumption did NOT block.
     // It still re-validates availability, because non-deterministic formulas
@@ -41,7 +40,7 @@ export function buildConsumptionConfig() {
       if (!dpItem) {
         dpChatMessage(
           `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.noDpItem`,
-            { actorName: actor?.name ?? "?", dpResource: dpItem.name })}</i>`,
+            { actorName: actor?.name ?? "?" })}</i>`,
           actor?.name ?? "?", whisper
         );
         // Don't push anything — DP just wasn't deducted, activity still fires.
@@ -243,12 +242,14 @@ export class DivinityPoints {
   }
 
   static isDivinityItem(item) {
+    // Match on source.custom OR on the item name matching the current setting —
+    // so a manually renamed item is still recognised on drag.
+    if (item.type !== "feat") return false;
     return (
-      item.type === "feat" && (
-        item.flags?.core?.sourceId ===
-          `Compendium.${DP_MODULE_NAME}.module-items.Item.${DP_ITEM_ID}` ||
-        item.system?.source?.custom === DivinityPoints.settings.dpResource
-      )
+      item.flags?.core?.sourceId ===
+        `Compendium.${DP_MODULE_NAME}.module-items.Item.${DP_ITEM_ID}` ||
+      item.system?.source?.custom === DivinityPoints.settings.dpResource ||
+      item.name === DivinityPoints.settings.dpResource
     );
   }
 
@@ -328,6 +329,12 @@ export class DivinityPoints {
           game.i18n.localize(`${DP_MODULE_NAME}.duplicated`) + ")",
       });
       return;
+    }
+
+    // Heal stale source.custom in case item was manually renamed without updating it
+    const currentResource = DivinityPoints.settings.dpResource;
+    if (item.system?.source?.custom !== currentResource) {
+      await item.update({ "system.source.custom": currentResource });
     }
 
     await actor.update({ flags: { dnd5edivinitypoints: { item: item._id } } });
