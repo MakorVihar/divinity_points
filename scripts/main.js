@@ -10,6 +10,26 @@ Handlebars.registerHelper("dpFormat", (path, ...args) => {
 Hooks.on("init", () => {
   console.log(`${DP_MODULE_NAME} | Initialising Divinity Points module`);
 
+  // ── Register dpResource FIRST — other init code depends on it ────────────
+  game.settings.register(DP_MODULE_NAME, "dpResource", {
+    name: `${DP_MODULE_NAME}.resourceLabel`, hint: `${DP_MODULE_NAME}.resourceNote`,
+    scope: "world", config: true, type: String, default: "Divinity Points",
+    onChange: async (newName) => {
+      if (!game.user.isGM) return;
+      for (const item of game.items) {
+        if (DivinityPoints.isDivinityItemByFlag(item)) {
+          await item.update({ name: newName, "system.source.custom": newName });
+        }
+      }
+      for (const actor of game.actors) {
+        const dpItem = DivinityPoints.getDivinityPointsItem(actor);
+        if (dpItem) {
+          await dpItem.update({ name: newName, "system.source.custom": newName });
+        }
+      }
+    },
+  });
+
   CONFIG.DND5E.activityConsumptionTypes.divinityPoints = buildConsumptionConfig();
 
   game.dnd5e.config.featureTypes.class.subtypes.dp =
@@ -42,28 +62,7 @@ Hooks.on("init", () => {
     onChange: () => DivinityPoints.setDpColors(),
   });
 
-  game.settings.register(DP_MODULE_NAME, "dpResource", {
-    name: `${DP_MODULE_NAME}.resourceLabel`, hint: `${DP_MODULE_NAME}.resourceNote`,
-    scope: "world", config: true, type: String, default: "Divinity Points",
-    onChange: async (newName) => {
-      // Find all existing DP items by the module flag or source.custom matching
-      // any feat — then update them to the new name.
-      // We search by source.custom matching anything that exists in the world
-      // rather than the old name, because on reload we don't know the old name.
-      if (!game.user.isGM) return;
-      for (const item of game.items) {
-        if (DivinityPoints.isDivinityItemByFlag(item)) {
-          await item.update({ name: newName, "system.source.custom": newName });
-        }
-      }
-      for (const actor of game.actors) {
-        const dpItem = DivinityPoints.getDivinityPointsItem(actor);
-        if (dpItem) {
-          await dpItem.update({ name: newName, "system.source.custom": newName });
-        }
-      }
-    },
-  });
+
   game.settings.register(DP_MODULE_NAME, "dpActivateBar", {
     name: `${DP_MODULE_NAME}.dpResourceBarActive`, hint: `${DP_MODULE_NAME}.dpResourceBarActiveHint`,
     scope: "world", config: true, type: Boolean, default: true,
