@@ -204,7 +204,7 @@ export class DivinityPoints {
       dpColorL:              "#4a1060",
       dpColorR:              "#c89020",
       dpGmOnly:              true,
-      dpChatPrivate:         false,
+      dpChatPrivate:         true,
       dpBlockOnInsufficient: true,
     };
   }

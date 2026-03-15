@@ -73,7 +73,7 @@ Hooks.on("init", () => {
   });
   game.settings.register(DP_MODULE_NAME, "dpChatPrivate", {
     name: `${DP_MODULE_NAME}.dpChatPrivate`, hint: `${DP_MODULE_NAME}.dpChatPrivateHint`,
-    scope: "world", config: true, type: Boolean, default: false,
+    scope: "world", config: true, type: Boolean, default: true,
   });
   game.settings.register(DP_MODULE_NAME, "dpBlockOnInsufficient", {
     name: `${DP_MODULE_NAME}.dpBlockOnInsufficient`,

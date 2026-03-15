@@ -29,5 +29,6 @@
   "dnd5e-divinitypoints.colorSettingsTitle": "Bar Colour Settings",
   "dnd5e-divinitypoints.colorSettingsButton": "Configure Bar Colours",
   "dnd5e-divinitypoints.colorSettingsHint": "Open the colour picker to customise the resource bar gradient and animation.",
-  "dnd5e-divinitypoints.barPreview": "Preview"
+  "dnd5e-divinitypoints.barPreview": "Preview",
+  "dnd5e-divinitypoints.dpAvailableHint": "{current} / {max} {dpResource} available."
 }
