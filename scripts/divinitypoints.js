@@ -41,7 +41,7 @@ export function buildConsumptionConfig() {
       if (!dpItem) {
         dpChatMessage(
           `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.noDpItem`,
-            { actorName: actor?.name ?? "?" })}</i>`,
+            { actorName: actor?.name ?? "?", dpResource: dpItem.name })}</i>`,
           actor?.name ?? "?", whisper
         );
         // Don't push anything — DP just wasn't deducted, activity still fires.
