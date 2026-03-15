@@ -16,14 +16,21 @@ Hooks.on("init", () => {
     scope: "world", config: true, type: String, default: "Divinity Points",
     onChange: async (newName) => {
       if (!game.user.isGM) return;
+      // Foundry calls onChange before writing the new value, so get() still
+      // returns the OLD name here — use it to find items to rename.
+      const oldName = game.settings.get(DP_MODULE_NAME, "dpResource");
+      if (!oldName || oldName === newName) return;
+
+      // World items
       for (const item of game.items) {
-        if (DivinityPoints.isDivinityItemByFlag(item)) {
+        if (item.type === "feat" && item.system?.source?.custom === oldName) {
           await item.update({ name: newName, "system.source.custom": newName });
         }
       }
+      // Actor-embedded items
       for (const actor of game.actors) {
         const dpItem = DivinityPoints.getDivinityPointsItem(actor);
-        if (dpItem) {
+        if (dpItem && dpItem.system?.source?.custom === oldName) {
           await dpItem.update({ name: newName, "system.source.custom": newName });
         }
       }
@@ -37,7 +44,6 @@ Hooks.on("init", () => {
 
   // ── Settings ──────────────────────────────────────────────────────────────
 
-  // Color/bar settings live behind a dedicated menu that uses <color-picker>
   game.settings.registerMenu(DP_MODULE_NAME, "colorMenu", {
     name:       `${DP_MODULE_NAME}.colorSettingsTitle`,
     label:      `${DP_MODULE_NAME}.colorSettingsButton`,
@@ -47,8 +53,6 @@ Hooks.on("init", () => {
     restricted: true,
   });
 
-  // These three are owned by the menu form but still need to be registered
-  // so game.settings.get/set works.
   game.settings.register(DP_MODULE_NAME, "dpColorL", {
     scope: "world", config: false, type: String, default: "#4a1060",
     onChange: () => DivinityPoints.setDpColors(),
@@ -61,7 +65,6 @@ Hooks.on("init", () => {
     scope: "world", config: false, type: Boolean, default: true,
     onChange: () => DivinityPoints.setDpColors(),
   });
-
 
   game.settings.register(DP_MODULE_NAME, "dpActivateBar", {
     name: `${DP_MODULE_NAME}.dpResourceBarActive`, hint: `${DP_MODULE_NAME}.dpResourceBarActiveHint`,
@@ -92,8 +95,6 @@ Hooks.on("init", () => {
 Hooks.on("ready", async () => {
   if (!game.user.isGM) return;
 
-  // Always check whether the item actually exists — the flag alone isn't enough
-  // because the GM may have deleted the item from the Items tab.
   const existing = game.items.find(
     i => i.type === "feat" &&
       i.system?.source?.custom === DivinityPoints.settings.dpResource
@@ -103,7 +104,6 @@ Hooks.on("ready", async () => {
     return;
   }
 
-  // Item is missing — recreate it regardless of the flag
   await game.settings.set(DP_MODULE_NAME, "starterItemCreated", false);
 
   const description = [
