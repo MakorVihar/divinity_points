@@ -41,7 +41,6 @@ export class DpSettingsForm extends HandlebarsApplicationMixin(ApplicationV2) {
     };
   }
 
-  /** Update preview bar live whenever a color or animate value changes */
   _onChangeForm(formConfig, event) {
     super._onChangeForm(formConfig, event);
     const form = this.element;
@@ -61,7 +60,6 @@ export class DpSettingsForm extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   }
 
-  /** Set preview on initial render */
   _onRender(context, options) {
     this._onChangeForm({}, {});
   }

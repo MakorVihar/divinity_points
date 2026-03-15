@@ -7,20 +7,32 @@ Handlebars.registerHelper("dpFormat", (path, ...args) => {
   return game.i18n.format(path, args[0].hash);
 });
 
+// Stores the last known resource name so onChange always has the old value,
+// regardless of whether Foundry commits before or after calling onChange.
+let _lastDpResource = "Divinity Points";
+
 Hooks.on("init", () => {
   console.log(`${DP_MODULE_NAME} | Initialising Divinity Points module`);
 
   // ── Register dpResource FIRST — other init code depends on it ────────────
   game.settings.register(DP_MODULE_NAME, "dpResource", {
-    name: `${DP_MODULE_NAME}.resourceLabel`, hint: `${DP_MODULE_NAME}.resourceNote`,
-    scope: "world", config: true, type: String, default: "Divinity Points",
+    name:    `${DP_MODULE_NAME}.resourceLabel`,
+    hint:    `${DP_MODULE_NAME}.resourceNote`,
+    scope:   "world",
+    config:  true,
+    type:    String,
+    default: "Divinity Points",
     onChange: async (newName) => {
-      // game.settings.get() still returns the OLD value during onChange
-      // because Foundry hasn't committed the new value yet.
-      const oldName = game.settings.get(DP_MODULE_NAME, "dpResource");
-      await DivinityPoints.updateAllDpItemSources(newName, oldName);
+      if (!game.user.isGM) return;
+      const oldName = _lastDpResource;
+      _lastDpResource = newName;
+      if (oldName && oldName !== newName)
+        await DivinityPoints.updateAllDpItemSources(newName, oldName);
     },
   });
+
+  // Seed _lastDpResource from whatever is saved in the world
+  try { _lastDpResource = game.settings.get(DP_MODULE_NAME, "dpResource"); } catch(e) {}
 
   CONFIG.DND5E.activityConsumptionTypes.divinityPoints = buildConsumptionConfig();
 
@@ -29,7 +41,6 @@ Hooks.on("init", () => {
 
   // ── Settings ──────────────────────────────────────────────────────────────
 
-  // Color/bar settings live behind a dedicated menu that uses <color-picker>
   game.settings.registerMenu(DP_MODULE_NAME, "colorMenu", {
     name:       `${DP_MODULE_NAME}.colorSettingsTitle`,
     label:      `${DP_MODULE_NAME}.colorSettingsButton`,
@@ -39,8 +50,6 @@ Hooks.on("init", () => {
     restricted: true,
   });
 
-  // These three are owned by the menu form but still need to be registered
-  // so game.settings.get/set works.
   game.settings.register(DP_MODULE_NAME, "dpColorL", {
     scope: "world", config: false, type: String, default: "#4a1060",
     onChange: () => DivinityPoints.setDpColors(),
@@ -53,7 +62,6 @@ Hooks.on("init", () => {
     scope: "world", config: false, type: Boolean, default: true,
     onChange: () => DivinityPoints.setDpColors(),
   });
-
 
   game.settings.register(DP_MODULE_NAME, "dpActivateBar", {
     name: `${DP_MODULE_NAME}.dpResourceBarActive`, hint: `${DP_MODULE_NAME}.dpResourceBarActiveHint`,
@@ -84,8 +92,6 @@ Hooks.on("init", () => {
 Hooks.on("ready", async () => {
   if (!game.user.isGM) return;
 
-  // Always check whether the item actually exists — the flag alone isn't enough
-  // because the GM may have deleted the item from the Items tab.
   const existing = game.items.find(
     i => i.type === "feat" &&
       i.system?.source?.custom === DivinityPoints.settings.dpResource
@@ -95,7 +101,6 @@ Hooks.on("ready", async () => {
     return;
   }
 
-  // Item is missing — recreate it regardless of the flag
   await game.settings.set(DP_MODULE_NAME, "starterItemCreated", false);
 
   const description = [
