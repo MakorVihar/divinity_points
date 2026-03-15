@@ -73,12 +73,22 @@ Hooks.on("init", () => {
   });
   game.settings.register(DP_MODULE_NAME, "dpChatPrivate", {
     name: `${DP_MODULE_NAME}.dpChatPrivate`, hint: `${DP_MODULE_NAME}.dpChatPrivateHint`,
-    scope: "world", config: true, type: Boolean, default: false,
+    scope: "world", config: true, type: Boolean, default: true,
   });
   game.settings.register(DP_MODULE_NAME, "dpBlockOnInsufficient", {
     name: `${DP_MODULE_NAME}.dpBlockOnInsufficient`,
     hint: `${DP_MODULE_NAME}.dpBlockOnInsufficientHint`,
     scope: "world", config: true, type: Boolean, default: true,
+  });
+  game.settings.register(DP_MODULE_NAME, "dpLongRestRecovery", {
+    name: `${DP_MODULE_NAME}.dpLongRestRecovery`,
+    hint: `${DP_MODULE_NAME}.dpLongRestRecoveryHint`,
+    scope: "world", config: true, type: String, default: "one",
+    choices: {
+      one:  `${DP_MODULE_NAME}.dpRecoveryOne`,
+      half: `${DP_MODULE_NAME}.dpRecoveryHalf`,
+      all:  `${DP_MODULE_NAME}.dpRecoveryAll`,
+    },
   });
   game.settings.register(DP_MODULE_NAME, "starterItemCreated", {
     scope: "world", config: false, type: Boolean, default: false,
@@ -128,7 +138,7 @@ Hooks.on("ready", async () => {
         uses: {
           max:      "@abilities.cua_0.mod",
           spent:    0,
-          recovery: [{ period: "lr", type: "recoverAll" }],
+          recovery: [],
         },
       },
     });
@@ -161,6 +171,11 @@ Hooks.on("updateActor", async (actor) => {
   if (!DivinityPoints.userHasActorOwnership(actor)) return;
   const dpItem = DivinityPoints.getDivinityPointsItem(actor);
   if (dpItem) await DivinityPoints.recalculateMax(actor, dpItem);
+});
+
+// Long rest recovery — amount controlled by dpLongRestRecovery setting
+Hooks.on("dnd5e.restCompleted", async (actor, result) => {
+  await DivinityPoints.handleLongRest(actor, result);
 });
 
 // SYNCHRONOUS — dnd5e uses Hooks.call() which cannot await async handlers.
