@@ -204,9 +204,8 @@ export class DivinityPoints {
       dpColorL:              "#4a1060",
       dpColorR:              "#c89020",
       dpGmOnly:              true,
-      dpChatPrivate:         true,
+      dpChatPrivate:         false,
       dpBlockOnInsufficient: true,
-      dpLongRestRecovery:    "one",
     };
   }
 
@@ -222,7 +221,6 @@ export class DivinityPoints {
         dpGmOnly:              game.settings.get(DP_MODULE_NAME, "dpGmOnly"),
         dpChatPrivate:         game.settings.get(DP_MODULE_NAME, "dpChatPrivate"),
         dpBlockOnInsufficient: game.settings.get(DP_MODULE_NAME, "dpBlockOnInsufficient"),
-        dpLongRestRecovery:    game.settings.get(DP_MODULE_NAME, "dpLongRestRecovery"),
       };
     } catch (e) {
       return DivinityPoints.defaultSettings;
@@ -467,36 +465,6 @@ export class DivinityPoints {
         }
       }
     }
-  }
-
-  /**
-   * Handles long rest recovery of Divinity Points according to the setting.
-   * Called from the dnd5e.restCompleted hook.
-   */
-  static async handleLongRest(actor, result) {
-    if (!result.longRest) return;
-    if (!DivinityPoints.isActorCharacter(actor)) return;
-    const dpItem = DivinityPoints.getDivinityPointsItem(actor);
-    if (!dpItem) return;
-
-    const max    = dpItem.system.uses.max;
-    const spent  = dpItem.system.uses.spent ?? 0;
-    if (spent === 0) return; // nothing to recover
-
-    const mode = DivinityPoints.settings.dpLongRestRecovery;
-    let recovered;
-    if (mode === "all") {
-      recovered = spent;
-    } else if (mode === "half") {
-      recovered = Math.max(1, Math.floor(max / 2));
-      recovered = Math.min(recovered, spent); // can't recover more than spent
-    } else { // "one"
-      recovered = Math.min(1, spent);
-    }
-
-    if (recovered <= 0) return;
-    const newSpent = Math.max(0, spent - recovered);
-    await DivinityPoints.updateDivinityItem(dpItem, null, null, newSpent);
   }
 
   static async _handleBarValueChange(item, event, html, max) {

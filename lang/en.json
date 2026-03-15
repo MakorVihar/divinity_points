@@ -29,11 +29,5 @@
   "dnd5e-divinitypoints.colorSettingsTitle": "Bar Colour Settings",
   "dnd5e-divinitypoints.colorSettingsButton": "Configure Bar Colours",
   "dnd5e-divinitypoints.colorSettingsHint": "Open the colour picker to customise the resource bar gradient and animation.",
-  "dnd5e-divinitypoints.barPreview": "Preview",
-  "dnd5e-divinitypoints.dpAvailableHint": "{current} / {max} {dpResource} available.",
-  "dnd5e-divinitypoints.dpLongRestRecovery": "Long Rest Recovery",
-  "dnd5e-divinitypoints.dpLongRestRecoveryHint": "How much is recovered on a long rest.",
-  "dnd5e-divinitypoints.dpRecoveryOne": "One",
-  "dnd5e-divinitypoints.dpRecoveryHalf": "Half",
-  "dnd5e-divinitypoints.dpRecoveryAll": "All"
+  "dnd5e-divinitypoints.barPreview": "Preview"
 }
