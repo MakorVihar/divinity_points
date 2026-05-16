@@ -168,15 +168,15 @@ Hooks.on("dnd5e.preActivityConsumption", (activity, usageConfig, messageConfig) 
   return validateDpConsumption(activity, usageConfig, messageConfig);
 });
 
-Hooks.on("renderActorSheet5eCharacter2", (app, html, data) => {
-  DivinityPoints.alterCharacterSheet(app, html, data, "v2");
+Hooks.on("renderActorSheet5eCharacter2", (app, html, context, options) => {
+  DivinityPoints.alterCharacterSheet(app, html, context, "v2");
 });
-Hooks.on("renderActorSheetV2", (app, html, data) => {
-  DivinityPoints.alterCharacterSheet(app, html, data, "v2");
+Hooks.on("renderActorSheetV2", (app, html, context, options) => {
+  DivinityPoints.alterCharacterSheet(app, html, context, "v2");
 });
-Hooks.on("renderActorSheet5eCharacter", (app, html, data) => {
-  DivinityPoints.alterCharacterSheet(app, html, data, "v1");
+Hooks.on("renderActorSheet5eCharacter", (app, html, context, options) => {
+  DivinityPoints.alterCharacterSheet(app, html, context, "v1");
 });
-Hooks.on("renderNPCActorSheet", (app, html, data) => {
-  DivinityPoints.alterCharacterSheet(app, html, data, "npc");
+Hooks.on("renderNPCActorSheet", (app, html, context, optionsa) => {
+  DivinityPoints.alterCharacterSheet(app, html, context, "npc");
 });

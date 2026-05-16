@@ -382,11 +382,14 @@ export class DivinityPoints {
     );
   }
 
-  static async alterCharacterSheet(app, html, data, type) {
-    if (!["character", "npc"].includes(data.actor?.type)) return;
+  static async alterCharacterSheet(app, html, context, type) {
+    
+    const actor    = app.actor ?? app.document;
+    const editable = app.isEditable ?? app.options?.editable ?? true;
+
+    if (!["character", "npc"].includes(actor?.type)) return;
     if (!DivinityPoints.settings.dpActivateBar) return;
 
-    const actor  = data.actor;
     const dpItem = DivinityPoints.getDivinityPointsItem(actor);
     if (!dpItem) return;
 
@@ -399,7 +402,7 @@ export class DivinityPoints {
       `modules/${DP_MODULE_NAME}/templates/divinity-points-sheet-tracker.hbs`,
       {
         isV2: type === "v2", isNPC: type === "npc",
-        editable: data.editable,
+        editable: editable,
         name: dpItem.name, _id: dpItem._id, max, value, percent,
       }
     );
@@ -418,26 +421,26 @@ export class DivinityPoints {
       sidebarSel = ".header-details .attributes";
     }
 
-    $(`${sidebarSel} .dp-bar-container`, html).remove();
-    if (append) $(sidebarSel, html).after(container);
-    else        $(sidebarSel, html).prepend(container);
+    $(`${sidebarSel} .dp-bar-container`, $(html)).remove();
+    if (append) $(sidebarSel, $(html)).after(container);
+    else        $(sidebarSel, $(html)).prepend(container);
 
-    $(".config-button.divinityPoints", html).off("click").on("click", (e) => {
+    $(".config-button.divinityPoints", $(html)).off("click").on("click", (e) => {
       e.preventDefault(); e.stopPropagation();
       new ActorDivinityPointsConfig({ document: dpItem }).render(true);
     });
 
-    $(".progress.dp-points .label", html).off("click").on("click", (e) => {
+    $(".progress.dp-points .label", $(html)).off("click").on("click", (e) => {
       e.preventDefault(); e.stopPropagation();
-      $(".progress.dp-points .label", html).attr("hidden", "hidden");
-      const input = $(".progress.dp-points input.dp_value", html);
+      $(".progress.dp-points .label", $(html)).attr("hidden", "hidden");
+      const input = $(".progress.dp-points input.dp_value", $(html));
       input.removeAttr("hidden").focus().select();
     });
 
-    $(".progress.dp-points input.dp_value", html)
+    $(".progress.dp-points input.dp_value", $(html))
       .off("blur keydown")
       .on("blur", async (e) => {
-        await DivinityPoints._handleBarValueChange(dpItem, e, html, max);
+        await DivinityPoints._handleBarValueChange(dpItem, e, $(html), max);
       })
       .on("keydown", (e) => { if (e.key === "Enter") e.target.blur(); });
   }
