@@ -5,9 +5,9 @@
    ============================================================ */
 
 :root {
-  --dp-left-color:      #4a1060;
-  --dp-right-color:     #c89020;
-  --dp-animation-name:  dp-scroll;
+  --dp-left-color: #4a1060;
+  --dp-right-color: #c89020;
+  --dp-animation-name: dp-scroll;
 }
 
 /* ── Bar container ─────────────────────────────────────────── */
@@ -53,8 +53,13 @@
 }
 
 /* Fill bar pseudo-element */
-.tidy5e-sheet.application:where(.quadrone) .meter-group.dp-bar .meter .progress::before,
-.tidy5e-sheet.application:where(.quadrone) .meter-group.dp-bar .meter.progress::before,
+.tidy5e-sheet.application:where(.quadrone)
+  .meter-group.dp-bar
+  .meter
+  .progress::before,
+.tidy5e-sheet.application:where(.quadrone)
+  .meter-group.dp-bar
+  .meter.progress::before,
 .meter-group.dp-bar .meter.progress::before,
 .meter-group.dp-bar .meter .progress::before {
   content: "";
@@ -172,13 +177,21 @@ fieldset.dp-activity-consumption .hint {
 /* ── Scrolling animation ───────────────────────────────────── */
 
 @keyframes dp-scroll {
-  0%   { background-position:    0 0; }
-  100% { background-position: -200% 0%; }
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: -200% 0%;
+  }
 }
 
 @-webkit-keyframes dp-scroll {
-  0%   { background-position:    0 0; }
-  100% { background-position: -200% 0%; }
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: -200% 0%;
+  }
 }
 
 /* ── Settings form ─────────────────────────────────────────── */
@@ -213,7 +226,9 @@ fieldset.dp-activity-consumption .hint {
   flex: 4;
 }
 
-#client-settings .form-group[data-setting-id^="dnd5e-divinitypoints"] > .form-fields {
+#client-settings
+  .form-group[data-setting-id^="dnd5e-divinitypoints"]
+  > .form-fields {
   flex: 1;
   min-width: 0;
 }

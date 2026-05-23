@@ -1,0 +1,41 @@
+{
+  // Use the workspace's own typescript install for type checking,
+  // so the version always matches what's in package.json.
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+
+  // Enable IntelliSense in plain .js files (pairs with jsconfig.json).
+  "js/ts.suggestionActions.enabled": true,
+  "js/ts.validate.enabled": true,
+
+  // Treat .hbs files as HTML so you get tag/attribute completion
+  // in Handlebars templates.
+  "files.associations": {
+    "*.hbs": "html"
+  },
+
+  // Format JS and CSS on save.
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // Show type errors inline as you type (squiggles).
+  "js/ts.reportStyleChecksAsWarnings": false,
+
+  // Exclude generated symlink dirs and node_modules from the file
+  // explorer and search so you're not wading through Foundry's source.
+  "files.exclude": {
+    "node_modules": true,
+    "foundry": true,
+    "dnd5e-system": true
+  },
+  "search.exclude": {
+    "node_modules": true,
+    "foundry": true,
+    "dnd5e-system": true
+  }
+}

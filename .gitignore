@@ -1,0 +1,4 @@
+foundry
+node_modules/*
+foundry-config.yaml
+dnd5e-system*

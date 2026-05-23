@@ -1,61 +1,63 @@
 {
-    "id": "dnd5e-divinitypoints",
-    "title": "Divinity Points System 5e",
-    "description": "A FoundryVTT module for a Divinity Points resource system in D&D 5e. Adds a Divinity Points feature that scales with the character's Divinity modifier (@abilities.cua_0.mod), displays a resource bar on the character sheet, and allows other items and features to consume Divinity Points.",
-    "version": "2.5.1",
-    "compatibility": {
-        "minimum": "14.361",
-        "verified": "14.361",
-        "maximum": "14.999"
-    },
-    "relationships": {
-        "systems": [
-            {
-                "id": "dnd5e",
-                "type": "system",
-                "manifest": "https://raw.githubusercontent.com/foundryvtt/dnd5e/master/system.json",
-                "compatibility": {
-                    "minimum": "5.3.3",
-                    "verified": "5.3.3"
-                }
-            }
-        ],
-        "requires": [
-            {
-                "id": "dnd5e-custom-skills",
-                "type": "module"
-            }
-        ]
-    },
-    "url": "https://github.com/MakorVihar/divinity_points",
-    "manifest": "https://github.com/MakorVihar/divinity_points/releases/latest/download/module.json",
-    "download": "https://github.com/MakorVihar/divinity_points/releases/latest/download/dnd5e-divinitypoints.zip",
-    "changelog": "https://github.com/MakorVihar/divinity_points/releases/latest",
-    "authors": [
-        {
-            "name": "MakorVihar",
-            "url": "https://github.com/MakorVihar",
-            "flags": {}
+  "id": "dnd5e-divinitypoints",
+  "title": "Divinity Points System 5e",
+  "description": "A FoundryVTT module for a Divinity Points resource system in D&D 5e. Adds a Divinity Points feature that scales with the character's Divinity modifier (@abilities.cua_0.mod), displays a resource bar on the character sheet, and allows other items and features to consume Divinity Points.",
+  "version": "2.5.1",
+  "compatibility": {
+    "minimum": "14.361",
+    "verified": "14.361",
+    "maximum": "14.999"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "manifest": "https://raw.githubusercontent.com/foundryvtt/dnd5e/master/system.json",
+        "compatibility": {
+          "minimum": "5.3.3",
+          "verified": "5.3.3"
         }
+      }
     ],
-    "esmodules": [
-        "scripts/main.js"
-    ],
-    "styles": [
-        "css/dp-styles.css"
-    ],
-    "languages": [
-        {
-            "lang": "en",
-            "name": "English",
-            "path": "lang/en.json",
-            "flags": {}
-        }
-    ],
-    "media": [
-        {
-            "type": "icon",
-            "url": "icons/magic/holy/prayer-hands-glowing-yellow.webp"
-        }
+    "requires": [
+      {
+        "id": "dnd5e-custom-skills",
+        "type": "module"
+      }
     ]
+  },
+  "url": "https://github.com/MakorVihar/divinity_points",
+  "manifest": "https://github.com/MakorVihar/divinity_points/releases/latest/download/module.json",
+  "download": "https://github.com/MakorVihar/divinity_points/releases/latest/download/dnd5e-divinitypoints.zip",
+  "changelog": "https://github.com/MakorVihar/divinity_points/releases/latest",
+  "authors": [
+    {
+      "name": "MakorVihar",
+      "url": "https://github.com/MakorVihar",
+      "flags": {}
+    }
+  ],
+  "esmodules": ["scripts/main.js"],
+  "styles": ["css/dp-styles.css"],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json",
+      "flags": {}
+    }
+  ],
+  "media": [
+    {
+      "type": "icon",
+      "url": "icons/magic/holy/prayer-hands-glowing-yellow.webp"
+    }
+  ],
+  "flags": {
+    "hotReload": {
+      "extensions": ["css", "hbs", "html", "json"],
+      "paths": ["css/", "templates/", "lang/"]
+    }
+  }
 }

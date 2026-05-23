@@ -30,7 +30,11 @@
 // ES module imports — each file exports the things it wants to share.
 
 import { DP_MODULE_NAME } from "./constants.js";
-import { DivinityPoints, buildConsumptionConfig, validateDpConsumption } from "./divinitypoints.js";
+import {
+  DivinityPoints,
+  buildConsumptionConfig,
+  validateDpConsumption,
+} from "./divinitypoints.js";
 import { ActorDivinityPointsConfig } from "./actor-bar-config.js";
 import { DpSettingsForm } from "./settings-form.js";
 
@@ -63,11 +67,11 @@ Hooks.on("init", () => {
   // Other code in this block reads this setting (e.g. to label the consumption
   // type), so it must be registered before those reads happen.
   game.settings.register(DP_MODULE_NAME, "dpResource", {
-    name:    `${DP_MODULE_NAME}.resourceLabel`,    // display name (from en.json)
-    hint:    `${DP_MODULE_NAME}.resourceNote`,     // descriptive hint text
-    scope:   "world",   // "world" = stored per-world, "client" = per-user
-    config:  true,      // true = visible in Module Settings UI
-    type:    String,
+    name: `${DP_MODULE_NAME}.resourceLabel`, // display name (from en.json)
+    hint: `${DP_MODULE_NAME}.resourceNote`, // descriptive hint text
+    scope: "world", // "world" = stored per-world, "client" = per-user
+    config: true, // true = visible in Module Settings UI
+    type: String,
     default: "Divinity Points",
 
     // onChange fires whenever the GM saves a new value in the settings menu.
@@ -76,8 +80,8 @@ Hooks.on("init", () => {
     onChange: async (newName) => {
       if (!game.user.isGM) return; // only the GM should rename items
 
-      const oldName = _lastDpResource;   // the name it was BEFORE this change
-      _lastDpResource = newName;         // update our tracker to the new name
+      const oldName = _lastDpResource; // the name it was BEFORE this change
+      _lastDpResource = newName; // update our tracker to the new name
 
       if (oldName && oldName !== newName) {
         await DivinityPoints.updateAllDpItemSources(newName, oldName);
@@ -100,50 +104,53 @@ Hooks.on("init", () => {
   // buildConsumptionConfig() returns a plain object with the functions dnd5e
   // expects: consume() handles the actual deduction, consumptionLabels()
   // provides the hint text shown in the usage dialog.
-  CONFIG.DND5E.activityConsumptionTypes.divinityPoints = buildConsumptionConfig();
+  CONFIG.DND5E.activityConsumptionTypes.divinityPoints =
+    buildConsumptionConfig();
 
   // Register "Divinity Points" as a class feature subtype so it appears
   // correctly in the Feature Type dropdown on the item sheet.
-  game.dnd5e.config.featureTypes.class.subtypes.dp =
-    game.settings.get(DP_MODULE_NAME, "dpResource");
+  game.dnd5e.config.featureTypes.class.subtypes.dp = game.settings.get(
+    DP_MODULE_NAME,
+    "dpResource",
+  );
 
   // ── Bar colour settings (shown via a custom colour-picker form) ───────────
   // These three settings are managed through the "Configure Bar Colours" button
   // (DpSettingsForm), not shown as plain inputs in the settings list.
   // They still need to be registered here so get/set works everywhere.
   game.settings.registerMenu(DP_MODULE_NAME, "colorMenu", {
-    name:       `${DP_MODULE_NAME}.colorSettingsTitle`,
-    label:      `${DP_MODULE_NAME}.colorSettingsButton`,
-    hint:       `${DP_MODULE_NAME}.colorSettingsHint`,
-    icon:       "fas fa-palette",
-    type:       DpSettingsForm,  // the class that renders the colour picker form
-    restricted: true,            // only GMs can open it
+    name: `${DP_MODULE_NAME}.colorSettingsTitle`,
+    label: `${DP_MODULE_NAME}.colorSettingsButton`,
+    hint: `${DP_MODULE_NAME}.colorSettingsHint`,
+    icon: "fas fa-palette",
+    type: DpSettingsForm, // the class that renders the colour picker form
+    restricted: true, // only GMs can open it
   });
 
   // Left gradient colour of the resource bar (hidden from plain settings list)
   game.settings.register(DP_MODULE_NAME, "dpColorL", {
-    scope:    "world",
-    config:   false,   // hidden — managed by DpSettingsForm
-    type:     String,
-    default:  "#4a1060",
+    scope: "world",
+    config: false, // hidden — managed by DpSettingsForm
+    type: String,
+    default: "#4a1060",
     onChange: () => DivinityPoints.setDpColors(), // re-apply CSS vars immediately
   });
 
   // Right gradient colour of the resource bar
   game.settings.register(DP_MODULE_NAME, "dpColorR", {
-    scope:    "world",
-    config:   false,
-    type:     String,
-    default:  "#c89020",
+    scope: "world",
+    config: false,
+    type: String,
+    default: "#c89020",
     onChange: () => DivinityPoints.setDpColors(),
   });
 
   // Whether the bar gradient animates (scrolls left-to-right)
   game.settings.register(DP_MODULE_NAME, "dpAnimateBar", {
-    scope:    "world",
-    config:   false,
-    type:     Boolean,
-    default:  true,
+    scope: "world",
+    config: false,
+    type: Boolean,
+    default: true,
     onChange: () => DivinityPoints.setDpColors(),
   });
 
@@ -151,50 +158,50 @@ Hooks.on("init", () => {
 
   // Show the resource bar on character sheets
   game.settings.register(DP_MODULE_NAME, "dpActivateBar", {
-    name:    `${DP_MODULE_NAME}.dpResourceBarActive`,
-    hint:    `${DP_MODULE_NAME}.dpResourceBarActiveHint`,
-    scope:   "world",
-    config:  true,
-    type:    Boolean,
+    name: `${DP_MODULE_NAME}.dpResourceBarActive`,
+    hint: `${DP_MODULE_NAME}.dpResourceBarActiveHint`,
+    scope: "world",
+    config: true,
+    type: Boolean,
     default: true,
   });
 
   // Restrict item configuration (gear icon on the bar) to GMs only
   game.settings.register(DP_MODULE_NAME, "dpGmOnly", {
-    name:    `${DP_MODULE_NAME}.dpGmOnly`,
-    hint:    `${DP_MODULE_NAME}.dpGmOnlyNote`,
-    scope:   "world",
-    config:  true,
-    type:    Boolean,
+    name: `${DP_MODULE_NAME}.dpGmOnly`,
+    hint: `${DP_MODULE_NAME}.dpGmOnlyNote`,
+    scope: "world",
+    config: true,
+    type: Boolean,
     default: true,
   });
 
   // Send usage messages as private whispers to the GM only
   game.settings.register(DP_MODULE_NAME, "dpChatPrivate", {
-    name:    `${DP_MODULE_NAME}.dpChatPrivate`,
-    hint:    `${DP_MODULE_NAME}.dpChatPrivateHint`,
-    scope:   "world",
-    config:  true,
-    type:    Boolean,
+    name: `${DP_MODULE_NAME}.dpChatPrivate`,
+    hint: `${DP_MODULE_NAME}.dpChatPrivateHint`,
+    scope: "world",
+    config: true,
+    type: Boolean,
     default: true,
   });
 
   // Prevent an ability from firing if the actor doesn't have enough DP
   game.settings.register(DP_MODULE_NAME, "dpBlockOnInsufficient", {
-    name:    `${DP_MODULE_NAME}.dpBlockOnInsufficient`,
-    hint:    `${DP_MODULE_NAME}.dpBlockOnInsufficientHint`,
-    scope:   "world",
-    config:  true,
-    type:    Boolean,
+    name: `${DP_MODULE_NAME}.dpBlockOnInsufficient`,
+    hint: `${DP_MODULE_NAME}.dpBlockOnInsufficientHint`,
+    scope: "world",
+    config: true,
+    type: Boolean,
     default: true,
   });
 
   // Internal flag: has the starter world item been created yet?
   // This is config: false so it doesn't clutter the settings UI.
   game.settings.register(DP_MODULE_NAME, "starterItemCreated", {
-    scope:   "world",
-    config:  false,
-    type:    Boolean,
+    scope: "world",
+    config: false,
+    type: Boolean,
     default: false,
   });
 
@@ -204,8 +211,10 @@ Hooks.on("init", () => {
   // Expose helper functions to the global window so GMs can use them in macros:
   //   getDivinityPointsItem(actor) → returns the DP item or false
   //   alterDivinityPoints(actor, uses, max) → programmatically change DP
-  window.getDivinityPointsItem = DivinityPoints.getDivinityPointsItem.bind(DivinityPoints);
-  window.alterDivinityPoints   = DivinityPoints.alterDivinityPoints.bind(DivinityPoints);
+  window.getDivinityPointsItem =
+    DivinityPoints.getDivinityPointsItem.bind(DivinityPoints);
+  window.alterDivinityPoints =
+    DivinityPoints.alterDivinityPoints.bind(DivinityPoints);
 });
 
 // ── ready hook ────────────────────────────────────────────────────────────────
@@ -220,8 +229,9 @@ Hooks.on("ready", async () => {
   // Items directory. We identify it by its source.custom field matching
   // the current resource name setting.
   const existingItem = game.items.find(
-    i => i.type === "feat" &&
-         i.system?.source?.custom === DivinityPoints.settings.dpResource
+    (i) =>
+      i.type === "feat" &&
+      i.system?.source?.custom === DivinityPoints.settings.dpResource,
   );
 
   if (existingItem) {
@@ -253,16 +263,16 @@ Hooks.on("ready", async () => {
     const created = await Item.create({
       name: resourceName,
       type: "feat",
-      img:  "icons/magic/holy/prayer-hands-glowing-yellow.webp",
+      img: "icons/magic/holy/prayer-hands-glowing-yellow.webp",
       system: {
         description: { value: description, chat: "" },
         // source.custom is how we identify this item as THE Divinity Points item
         source: { custom: resourceName },
-        type:   { value: "class", subtype: "dp" },
+        type: { value: "class", subtype: "dp" },
         uses: {
           // @abilities.cua_0.mod is the Divinity ability modifier from dnd5e-custom-skills
-          max:      "@abilities.cua_0.mod",
-          spent:    0,
+          max: "@abilities.cua_0.mod",
+          spent: 0,
           // Edit recovery on the item sheet to configure long rest behaviour.
           // Default: recover all on long rest.
           recovery: [{ period: "lr", type: "recoverAll" }],
@@ -275,10 +285,10 @@ Hooks.on("ready", async () => {
     // Show a permanent notification pointing the GM to the new item
     ui.notifications.info(
       game.i18n.format(`${DP_MODULE_NAME}.starterItemReady`, {
-        name:       created.name,
+        name: created.name,
         dpResource: resourceName,
       }),
-      { permanent: true }
+      { permanent: true },
     );
   } catch (err) {
     console.error(`${DP_MODULE_NAME} | Failed to create starter item:`, err);
@@ -332,9 +342,12 @@ Hooks.on("updateActor", async (actor) => {
 //
 // validateDpConsumption() returns false synchronously to block, or undefined
 // to allow. Chat messages inside it are fire-and-forget (no await needed).
-Hooks.on("dnd5e.preActivityConsumption", (activity, usageConfig, messageConfig) => {
-  return validateDpConsumption(activity, usageConfig, messageConfig);
-});
+Hooks.on(
+  "dnd5e.preActivityConsumption",
+  (activity, usageConfig, messageConfig) => {
+    return validateDpConsumption(activity, usageConfig, messageConfig);
+  },
+);
 
 // ── Character sheet render hooks ──────────────────────────────────────────────
 // These fire whenever a character sheet is rendered (opened or refreshed).

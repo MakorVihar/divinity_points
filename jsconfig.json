@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "module": "ES2022",
+    "target": "ES2022",
+    // checkJs: false means .js files are NOT checked unless they have // @ts-check at the top.
+    // Flip to true once you're happy with the noise level.
+    "checkJs": false,
+    // Keeps type errors as warnings rather than hard errors during the migration period.
+    "noEmit": true,
+    "strict": false,
+    // Tells TypeScript to look for .d.ts files in these folders *instead of*
+    // automatically crawling node_modules/@types.  Listing an empty array
+    // prevents the stale foundry-vtt-types v9 package (if it's still installed)
+    // from being silently injected.
+    "typeRoots": ["./node_modules/@types"]
+  },
+  "exclude": ["./node_modules", "./**/node_modules/*"],
+  "include": [
+    // ── Module source ──────────────────────────────────────────────────
+    "scripts/*.js",
+
+    // ── globals.d.ts MUST be here ───────────────────────────────────────────
+    // When "include" is specified TypeScript ONLY processes files in this list
+    // (plus files they import).  globals.d.ts was missing, so the dnd5e global,
+    // game.dnd5e, Window extensions, and FlagConfig were never loaded.
+    "globals.d.ts",
+
+    // ── Foundry v14 built-in type declarations (created by npm run createSymlinks) ─
+    // These files live in the Foundry install and are symlinked into foundry/
+    // by tools/create-symlinks.mjs.  They declare game, canvas, Hooks, Actor,
+    // Item, etc. as globals — no separate foundry-vtt-types package needed.
+    "foundry/client/global.d.mts",
+    "foundry/common/primitives/global.d.mts"
+    // NOTE: client.mjs is the *implementation*, not the declarations.
+    //       Including it just adds noise; the .d.mts files are all you need.
+  ],
+  "typeAcquisition": {
+    "include": ["jquery"]
+  }
+}

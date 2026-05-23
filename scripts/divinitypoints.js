@@ -39,9 +39,9 @@ import { ActorDivinityPointsConfig } from "./actor-bar-config.js";
 function dpChatMessage(content, actorName, whisper) {
   ChatMessage.create({
     content,
-    speaker:          ChatMessage.getSpeaker({ alias: actorName }),
+    speaker: ChatMessage.getSpeaker({ alias: actorName }),
     isContentVisible: false, // hides the speaker portrait header
-    isAuthor:         true,
+    isAuthor: true,
     whisper,
   });
 }
@@ -70,7 +70,6 @@ function dpChatMessage(content, actorName, whisper) {
  */
 export function buildConsumptionConfig() {
   const config = {
-
     /**
      * Performs the Divinity Points deduction when an ability is used.
      *
@@ -89,12 +88,12 @@ export function buildConsumptionConfig() {
      * @param {object} updates - Pending update payload: { actor, item[], rolls[] }
      */
     async consume(config, updates) {
-      const actor   = this.actor;
-      const dpItem  = actor ? DivinityPoints.getDivinityPointsItem(actor) : null;
+      const actor = this.actor;
+      const dpItem = actor ? DivinityPoints.getDivinityPointsItem(actor) : null;
 
       // Determine who sees the chat message (everyone, or GM-only)
       const whisper = DivinityPoints.settings.dpChatPrivate
-        ? game.users.filter(u => u.isGM)
+        ? game.users.filter((u) => u.isGM)
         : [];
 
       // If no DP item is on the sheet, post an error and abort silently.
@@ -102,10 +101,12 @@ export function buildConsumptionConfig() {
       // already, but this is a fallback.
       if (!dpItem) {
         dpChatMessage(
-          `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.noDpItem`,
-            { actorName: actor?.name ?? "?" })}</i>`,
+          `<i style='color:red;'>${game.i18n.format(
+            `${DP_MODULE_NAME}.noDpItem`,
+            { actorName: actor?.name ?? "?" },
+          )}</i>`,
           actor?.name ?? "?",
-          whisper
+          whisper,
         );
         return;
       }
@@ -113,19 +114,21 @@ export function buildConsumptionConfig() {
       // Resolve the cost — this evaluates any formula (e.g. "@scale.monk.ki")
       // and applies scaling if the activity supports it.
       const costRoll = await this.resolveCost({ config, rolls: updates.rolls });
-      const cost     = Math.max(0, Math.floor(costRoll.total));
+      const cost = Math.max(0, Math.floor(costRoll.total));
       if (cost <= 0) return; // cost of 0 = nothing to deduct
 
-      const spent     = dpItem.system.uses.spent ?? 0;
+      const spent = dpItem.system.uses.spent ?? 0;
       const available = dpItem.system.uses.max - spent;
 
       // Guard against going below zero (safety net for non-deterministic formulas)
       if (available < cost) {
         dpChatMessage(
-          `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.notEnoughDp`,
-            { actorName: actor.name, dpResource: dpItem.name })}</i>`,
+          `<i style='color:red;'>${game.i18n.format(
+            `${DP_MODULE_NAME}.notEnoughDp`,
+            { actorName: actor.name, dpResource: dpItem.name },
+          )}</i>`,
           actor.name,
-          whisper
+          whisper,
         );
         return; // don't push the update — DP would go negative
       }
@@ -134,27 +137,30 @@ export function buildConsumptionConfig() {
       // updates.item is an array of { _id, ...fields } objects.
       // If another hook already added an entry for this item, merge into it.
       if (!Array.isArray(updates.item)) updates.item = [];
-      const existingEntry = updates.item.find(u => u._id === dpItem._id);
+      const existingEntry = updates.item.find((u) => u._id === dpItem._id);
       if (existingEntry) {
         existingEntry["system.uses.spent"] =
           (existingEntry["system.uses.spent"] ?? spent) + cost;
       } else {
         updates.item.push({
-          _id:                 dpItem._id,
+          _id: dpItem._id,
           "system.uses.spent": spent + cost,
         });
       }
 
       // Post the success message to chat
       dpChatMessage(
-        `<i style='color:green;'>${game.i18n.format(`${DP_MODULE_NAME}.usedDp`, {
-          actorName:  actor.name,
-          dpCost:     cost,
-          dpResource: dpItem.name,
-          remaining:  available - cost,
-        })}</i>`,
+        `<i style='color:green;'>${game.i18n.format(
+          `${DP_MODULE_NAME}.usedDp`,
+          {
+            actorName: actor.name,
+            dpCost: cost,
+            dpResource: dpItem.name,
+            remaining: available - cost,
+          },
+        )}</i>`,
         actor.name,
-        whisper
+        whisper,
       );
     },
 
@@ -167,24 +173,26 @@ export function buildConsumptionConfig() {
      * @returns {{ label: string, hint: string, warn: boolean }}
      */
     consumptionLabels(config, options = {}) {
-      const actor   = this.actor;
-      const dpItem  = actor ? DivinityPoints.getDivinityPointsItem(actor) : null;
-      const name    = dpItem?.name ?? DivinityPoints.settings.dpResource;
+      const actor = this.actor;
+      const dpItem = actor ? DivinityPoints.getDivinityPointsItem(actor) : null;
+      const name = dpItem?.name ?? DivinityPoints.settings.dpResource;
       const available = dpItem
-        ? (dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0))
+        ? dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0)
         : 0;
 
       // Evaluate the cost formula synchronously for display purposes only
-      const costRoll   = this.resolveCost({ config, evaluate: false });
+      const costRoll = this.resolveCost({ config, evaluate: false });
       const simpleCost = costRoll.isDeterministic
         ? costRoll.evaluateSync().total
         : NaN; // non-deterministic formulas (dice) can't be pre-calculated
 
       return {
-        label: game.i18n.format(`${DP_MODULE_NAME}.consumptionLabel`, { dpResource: name }),
-        hint:  game.i18n.format(`${DP_MODULE_NAME}.dpAvailableHint`, {
-          current:    available,
-          max:        dpItem?.system.uses.max ?? 0,
+        label: game.i18n.format(`${DP_MODULE_NAME}.consumptionLabel`, {
+          dpResource: name,
+        }),
+        hint: game.i18n.format(`${DP_MODULE_NAME}.dpAvailableHint`, {
+          current: available,
+          max: dpItem?.system.uses.max ?? 0,
           dpResource: name,
         }),
         // warn: true turns the hint text orange to alert the player
@@ -197,8 +205,10 @@ export function buildConsumptionConfig() {
   // shows the current resource name, even after a rename.
   // Object.defineProperty lets us attach a getter to an existing object.
   Object.defineProperty(config, "label", {
-    get() { return DivinityPoints.settings.dpResource; },
-    enumerable:   true,
+    get() {
+      return DivinityPoints.settings.dpResource;
+    },
+    enumerable: true,
     configurable: true,
   });
 
@@ -236,40 +246,40 @@ export function validateDpConsumption(activity, usageConfig) {
   if (!actor || !DivinityPoints.isActorCharacter(actor)) return;
 
   // Only run if this activity has at least one "divinityPoints" consumption target
-  const dpTargets = (activity?.consumption?.targets ?? [])
-    .filter(t => t.type === "divinityPoints");
+  const dpTargets = (activity?.consumption?.targets ?? []).filter(
+    (t) => t.type === "divinityPoints",
+  );
   if (!dpTargets.length) return;
 
   const shouldBlock = DivinityPoints.settings.dpBlockOnInsufficient;
-  const whisper     = DivinityPoints.settings.dpChatPrivate
-    ? game.users.filter(u => u.isGM)
+  const whisper = DivinityPoints.settings.dpChatPrivate
+    ? game.users.filter((u) => u.isGM)
     : [];
 
-  const dpItem    = DivinityPoints.getDivinityPointsItem(actor);
+  const dpItem = DivinityPoints.getDivinityPointsItem(actor);
   const available = dpItem
-    ? (dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0))
+    ? dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0)
     : 0;
 
   // ── Case 1: No DP item on the sheet ───────────────────────────────────────
   if (!dpItem) {
     dpChatMessage(
-      `<i style='color:red;'>${game.i18n.format(
-        `${DP_MODULE_NAME}.noDpItem`,
-        { actorName: actor.name }
-      )}</i>`,
+      `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.noDpItem`, {
+        actorName: actor.name,
+      })}</i>`,
       actor.name,
-      whisper
+      whisper,
     );
     if (shouldBlock) return false; // block the ability
-    return;                        // allow with just a warning
+    return; // allow with just a warning
   }
 
   // ── Calculate total cost synchronously ────────────────────────────────────
   // We can only check deterministic formulas (plain numbers, @attribute lookups).
   // Dice-based formulas (e.g. "1d4") can't be evaluated until the activity
   // fires, so we skip the block check for those and let consume() handle them.
-  let totalCost            = 0;
-  let hasNonDeterministic  = false;
+  let totalCost = 0;
+  let hasNonDeterministic = false;
 
   for (const target of dpTargets) {
     try {
@@ -292,10 +302,10 @@ export function validateDpConsumption(activity, usageConfig) {
     dpChatMessage(
       `<i style='color:red;'>${game.i18n.format(
         `${DP_MODULE_NAME}.notEnoughDp`,
-        { actorName: actor.name, dpResource: dpItem.name }
+        { actorName: actor.name, dpResource: dpItem.name },
       )}</i>`,
       actor.name,
-      whisper
+      whisper,
     );
     if (shouldBlock) return false; // this false is what cancels the activity
   }
@@ -310,7 +320,6 @@ export function validateDpConsumption(activity, usageConfig) {
  * All methods are static — call them as DivinityPoints.methodName().
  */
 export class DivinityPoints {
-
   // ── Settings ───────────────────────────────────────────────────────────────
 
   /**
@@ -319,13 +328,13 @@ export class DivinityPoints {
    */
   static get defaultSettings() {
     return {
-      dpResource:            "Divinity Points",
-      dpActivateBar:         true,
-      dpAnimateBar:          true,
-      dpColorL:              "#4a1060",
-      dpColorR:              "#c89020",
-      dpGmOnly:              true,
-      dpChatPrivate:         true,
+      dpResource: "Divinity Points",
+      dpActivateBar: true,
+      dpAnimateBar: true,
+      dpColorL: "#4a1060",
+      dpColorR: "#c89020",
+      dpGmOnly: true,
+      dpChatPrivate: true,
       dpBlockOnInsufficient: true,
     };
   }
@@ -340,14 +349,17 @@ export class DivinityPoints {
     if (!game?.settings) return DivinityPoints.defaultSettings;
     try {
       return {
-        dpResource:            game.settings.get(DP_MODULE_NAME, "dpResource"),
-        dpActivateBar:         game.settings.get(DP_MODULE_NAME, "dpActivateBar"),
-        dpAnimateBar:          game.settings.get(DP_MODULE_NAME, "dpAnimateBar"),
-        dpColorL:              game.settings.get(DP_MODULE_NAME, "dpColorL"),
-        dpColorR:              game.settings.get(DP_MODULE_NAME, "dpColorR"),
-        dpGmOnly:              game.settings.get(DP_MODULE_NAME, "dpGmOnly"),
-        dpChatPrivate:         game.settings.get(DP_MODULE_NAME, "dpChatPrivate"),
-        dpBlockOnInsufficient: game.settings.get(DP_MODULE_NAME, "dpBlockOnInsufficient"),
+        dpResource: game.settings.get(DP_MODULE_NAME, "dpResource"),
+        dpActivateBar: game.settings.get(DP_MODULE_NAME, "dpActivateBar"),
+        dpAnimateBar: game.settings.get(DP_MODULE_NAME, "dpAnimateBar"),
+        dpColorL: game.settings.get(DP_MODULE_NAME, "dpColorL"),
+        dpColorR: game.settings.get(DP_MODULE_NAME, "dpColorR"),
+        dpGmOnly: game.settings.get(DP_MODULE_NAME, "dpGmOnly"),
+        dpChatPrivate: game.settings.get(DP_MODULE_NAME, "dpChatPrivate"),
+        dpBlockOnInsufficient: game.settings.get(
+          DP_MODULE_NAME,
+          "dpBlockOnInsufficient",
+        ),
       };
     } catch (e) {
       return DivinityPoints.defaultSettings;
@@ -364,11 +376,12 @@ export class DivinityPoints {
    */
   static setDpColors() {
     const s = DivinityPoints.settings;
-    document.documentElement.style.setProperty("--dp-left-color",  s.dpColorL);
+    document.documentElement.style.setProperty("--dp-left-color", s.dpColorL);
     document.documentElement.style.setProperty("--dp-right-color", s.dpColorR);
     // "dp-scroll" is the CSS keyframes animation name defined in dp-styles.css
     document.documentElement.style.setProperty(
-      "--dp-animation-name", s.dpAnimateBar ? "dp-scroll" : "none"
+      "--dp-animation-name",
+      s.dpAnimateBar ? "dp-scroll" : "none",
     );
   }
 
@@ -475,7 +488,7 @@ export class DivinityPoints {
   static getDivinityPointsItem(actor) {
     if (!actor) return false;
 
-    const items  = foundry.utils.getProperty(actor, "items");
+    const items = foundry.utils.getProperty(actor, "items");
     const flagId = DivinityPoints.getActorFlagDpItem(actor);
 
     // Primary lookup: the flag stores the item's _id for O(1) retrieval
@@ -486,10 +499,13 @@ export class DivinityPoints {
 
     // Fallback: scan feats for the source.custom match
     // This handles actors whose flag was lost or never set
-    return items.find(
-      i => i.type === "feat" &&
-           i.system?.source?.custom === DivinityPoints.settings.dpResource
-    ) ?? false;
+    return (
+      items.find(
+        (i) =>
+          i.type === "feat" &&
+          i.system?.source?.custom === DivinityPoints.settings.dpResource,
+      ) ?? false
+    );
   }
 
   // ── Formula evaluation ─────────────────────────────────────────────────────
@@ -511,12 +527,15 @@ export class DivinityPoints {
     if (!str.length) return 0;
 
     try {
-      const rollData  = actor.getRollData(); // all the @ variables for this actor
-      rollData.flags  = actor.flags;         // include flags in case formula uses them
-      const roll      = await Roll.create(str, rollData).evaluate();
+      const rollData = actor.getRollData(); // all the @ variables for this actor
+      rollData.flags = actor.flags; // include flags in case formula uses them
+      const roll = await Roll.create(str, rollData).evaluate();
       return roll.total;
     } catch (e) {
-      console.warn(`${DP_MODULE_NAME} | Formula evaluation failed: "${str}"`, e);
+      console.warn(
+        `${DP_MODULE_NAME} | Formula evaluation failed: "${str}"`,
+        e,
+      );
       return 0;
     }
   }
@@ -542,17 +561,22 @@ export class DivinityPoints {
    * @param {number|null}  max   - New maximum
    * @param {number|null}  spent - New spent count (direct)
    */
-  static async updateDivinityItem(item, value = null, max = null, spent = null) {
+  static async updateDivinityItem(
+    item,
+    value = null,
+    max = null,
+    spent = null,
+  ) {
     if (!item) return;
 
     const update = {};
 
-    if (max   !== null) update["system.uses.max"]   = max;
+    if (max !== null) update["system.uses.max"] = max;
     if (spent !== null) update["system.uses.spent"] = spent;
     if (value !== null) {
       // Convert from "current value" to "spent" (dnd5e's internal format)
-      const effectiveMax              = max ?? item.system.uses.max;
-      update["system.uses.spent"]     = effectiveMax - value;
+      const effectiveMax = max ?? item.system.uses.max;
+      update["system.uses.spent"] = effectiveMax - value;
     }
 
     if (Object.keys(update).length > 0) {
@@ -581,12 +605,17 @@ export class DivinityPoints {
     // ── Duplicate check ─────────────────────────────────────────────────────
     if (DivinityPoints.getActorFlagDpItem(actor)) {
       ui.notifications.error(
-        game.i18n.format(`${DP_MODULE_NAME}.alreadyDpItemOwned`,
-          { dpResource: DivinityPoints.settings.dpResource })
+        game.i18n.format(`${DP_MODULE_NAME}.alreadyDpItemOwned`, {
+          dpResource: DivinityPoints.settings.dpResource,
+        }),
       );
       // Rename the duplicate so the GM can see what happened and delete it
       await item.update({
-        name: item.name + " (" + game.i18n.localize(`${DP_MODULE_NAME}.duplicated`) + ")",
+        name:
+          item.name +
+          " (" +
+          game.i18n.localize(`${DP_MODULE_NAME}.duplicated`) +
+          ")",
       });
       return;
     }
@@ -656,7 +685,9 @@ export class DivinityPoints {
    */
   static async updateAllDpItemSources(newName, oldName) {
     if (!game.user.isGM) return;
-    console.log(`${DP_MODULE_NAME} | Renaming items: "${oldName}" → "${newName}"`);
+    console.log(
+      `${DP_MODULE_NAME} | Renaming items: "${oldName}" → "${newName}"`,
+    );
 
     // Update items in the world Items directory
     for (const item of game.items) {
@@ -696,7 +727,10 @@ export class DivinityPoints {
     const dpItem = DivinityPoints.getDivinityPointsItem(actor);
     if (!dpItem) return;
 
-    let currentMax = await DivinityPoints.withActorData(dpItem.system.uses.max, actor);
+    let currentMax = await DivinityPoints.withActorData(
+      dpItem.system.uses.max,
+      actor,
+    );
     let currentVal = currentMax - (dpItem.system.uses.spent ?? 0);
 
     // Override max if a new value was provided
@@ -705,13 +739,19 @@ export class DivinityPoints {
 
     // Override current value if a new value was provided, clamped to [0, max]
     if (uses !== undefined && uses !== null && uses !== "")
-      currentVal = Math.max(0, Math.min(
-        await DivinityPoints.withActorData(String(uses), actor),
-        currentMax
-      ));
+      currentVal = Math.max(
+        0,
+        Math.min(
+          await DivinityPoints.withActorData(String(uses), actor),
+          currentMax,
+        ),
+      );
 
     await DivinityPoints.updateDivinityItem(
-      dpItem, currentVal, currentMax, currentMax - currentVal
+      dpItem,
+      currentVal,
+      currentMax,
+      currentMax - currentVal,
     );
   }
 
@@ -733,10 +773,9 @@ export class DivinityPoints {
    * @param {string} type      - Sheet variant: "v2", "v1", or "npc"
    */
   static async alterCharacterSheet(app, html, context, type) {
-
     // In v13, actor came from data.actor. In v14 context structure differs —
     // always pull directly from the application instance instead.
-    const actor    = app.actor ?? app.document;
+    const actor = app.actor ?? app.document;
     const editable = app.isEditable ?? app.options?.editable ?? true;
 
     // Skip if actor type isn't character/npc, or bar is disabled
@@ -747,42 +786,44 @@ export class DivinityPoints {
     if (!dpItem) return; // actor doesn't have DP — nothing to show
 
     // Calculate display values
-    const max     = dpItem.system.uses.max;
-    const spent   = dpItem.system.uses.spent ?? 0;
-    const value   = max - spent;                                  // current points
+    const max = dpItem.system.uses.max;
+    const spent = dpItem.system.uses.spent ?? 0;
+    const value = max - spent; // current points
     const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0; // bar fill %
 
     // Render the bar template with all the data it needs
     const rendered = await foundry.applications.handlebars.renderTemplate(
       `modules/${DP_MODULE_NAME}/templates/divinity-points-sheet-tracker.hbs`,
       {
-        isV2:     type === "v2",
-        isNPC:    type === "npc",
+        isV2: type === "v2",
+        isNPC: type === "npc",
         editable: editable,
-        name:     dpItem.name,
-        _id:      dpItem._id,
+        name: dpItem.name,
+        _id: dpItem._id,
         max,
         value,
         percent,
-      }
+      },
     );
 
     // Wrap the rendered HTML in a container div for easy removal on re-render
-    const container = $('<div class="dp-bar-container"></div>').append(rendered);
+    const container = $('<div class="dp-bar-container"></div>').append(
+      rendered,
+    );
 
     // Find where to insert the bar — location differs per sheet type
     let sidebarSelector = ".sidebar .stats"; // default
-    let insertAfter     = true;              // true = after, false = prepend inside
+    let insertAfter = true; // true = after, false = prepend inside
 
     if (app.classList?.value?.includes("tidy5e-sheet")) {
       // Tidy5e sheet has a different sidebar structure
       sidebarSelector = ".attributes .side-panel, .tidy-tab.favorites";
-      insertAfter     = false;
+      insertAfter = false;
     } else if (type === "v2") {
       sidebarSelector = ".sidebar .stats > .meter-group:last";
     } else if (type === "npc") {
       sidebarSelector = ".sheet-body .sidebar";
-      insertAfter     = false;
+      insertAfter = false;
     } else {
       // Legacy v1 sheet
       sidebarSelector = ".header-details .attributes";
@@ -847,7 +888,12 @@ export class DivinityPoints {
     if (isNaN(newValue) || newValue < 0) newValue = 0;
     if (newValue > max) newValue = max;
 
-    await DivinityPoints.updateDivinityItem(item, newValue, null, max - newValue);
+    await DivinityPoints.updateDivinityItem(
+      item,
+      newValue,
+      null,
+      max - newValue,
+    );
 
     // Restore the label and hide the input
     $(".progress.dp-points .label", html).removeAttr("hidden");

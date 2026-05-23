@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Attaches to a Chrome tab that's already open on your Foundry instance.
+      // Start Foundry first, open it in Chrome, THEN hit F5 here.
+      // This is the safest option — Chrome manages its own process.
+      "name": "Attach to Foundry (Chrome)",
+      "type": "chrome",
+      "request": "attach",
+      "port": 9222,
+      "urlFilter": "http://localhost:30000/*",
+      "webRoot": "${workspaceFolder}",
+      // Maps the URL path Foundry uses back to your source files on disk,
+      // so breakpoints in VS Code land on the right lines.
+      "sourceMapPathOverrides": {
+        "/modules/dnd5e-divinitypoints/*": "${workspaceFolder}/*"
+      }
+    },
+    {
+      // Launches a fresh Chrome tab pointed at your Foundry instance.
+      // Requires Chrome to be closed (or use a separate profile).
+      // Good for a clean debug session.
+      "name": "Launch Foundry in Chrome",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:30000",
+      "webRoot": "${workspaceFolder}",
+      "sourceMapPathOverrides": {
+        "/modules/dnd5e-divinitypoints/*": "${workspaceFolder}/*"
+      },
+      // Opens DevTools automatically so you don't have to press F12
+      "runtimeArgs": ["--auto-open-devtools-for-tabs"]
+    }
+  ]
+}

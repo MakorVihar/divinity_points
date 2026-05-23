@@ -1,0 +1,24 @@
+{
+  "recommendations": [
+    // JavaScript/TypeScript IntelliSense (built-in, but listed for clarity)
+    "ms-vscode.vscode-typescript-next",
+
+    // Prettier — code formatting for JS and CSS
+    "esbenp.prettier-vscode",
+
+    // ESLint — catch real bugs, not just style issues
+    "dbaeumer.vscode-eslint",
+
+    // Handlebars syntax highlighting for .hbs templates
+    "andrejunges.handlebars",
+
+    // GitLens — inline blame, history, and diff tools
+    "eamodio.gitlens",
+
+    // Highlight TODO / FIXME / HACK comments
+    "gruntfuggly.todo-tree",
+
+    // Path IntelliSense — autocomplete for file paths in import statements
+    "christian-kohler.path-intellisense"
+  ]
+}
