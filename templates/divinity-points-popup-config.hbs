@@ -3,14 +3,7 @@
   {{! Header: icon + current / max inputs }}
   <div class="form-group dnd5e2 item dp-popup">
     <div class="form-fields">
-      <img
-        class="item-image gold-icon"
-        src="{{img}}"
-        width="60"
-        height="60"
-        style="margin-right:10px"
-        alt="{{name}}"
-      />
+      <img class="item-image gold-icon" src="{{img}}" width="60" height="60" style="margin-right:10px" alt="{{name}}" />
 
       <div class="form-group label-top">
         <label>{{localize "DND5E.Current"}}</label>
@@ -21,10 +14,7 @@
             name="uses.value"
             value="{{uses.value}}"
             placeholder="{{uses.value}}"
-            data-tooltip="{{localize
-              'dnd5e-divinitypoints.currentDpOverride'
-              dpResource=name
-            }}"
+            data-tooltip="{{localize 'dnd5e-divinitypoints.currentDpOverride' dpResource=name}}"
           />
         </div>
       </div>
@@ -38,10 +28,7 @@
             name="uses.max"
             value="{{uses.max}}"
             placeholder="{{uses.max}}"
-            data-tooltip="{{localize
-              'dnd5e-divinitypoints.maxDpOverride'
-              dpResource=name
-            }}"
+            data-tooltip="{{localize 'dnd5e-divinitypoints.maxDpOverride' dpResource=name}}"
           />
         </div>
       </div>
@@ -56,10 +43,7 @@
       type="button"
       class="unbutton control-button"
       data-action="updateDpMax"
-      data-tooltip="{{localize
-        'dnd5e-divinitypoints.updateDpMaxTooltip'
-        dpResource=name
-      }}"
+      data-tooltip="{{localize 'dnd5e-divinitypoints.updateDpMaxTooltip' dpResource=name}}"
     >
       {{localize "dnd5e-divinitypoints.updateDpMax" dpResource=name}}
     </button>
@@ -83,10 +67,7 @@
     </legend>
 
     {{#each usesRecovery}}
-      <div
-        class="form-group split-group full-width card"
-        data-index="{{@index}}"
-      >
+      <div class="form-group split-group full-width card" data-index="{{@index}}">
         <div class="form-fields">
 
           {{! Period }}
@@ -94,11 +75,7 @@
             <label>{{localize "DND5E.Period"}}</label>
             <div class="form-fields">
               <select name="{{prefix}}period">
-                {{selectOptions
-                  @root.recoveryPeriods
-                  selected=source.period
-                  blank=(localize "DND5E.None")
-                }}
+                {{selectOptions @root.recoveryPeriods selected=source.period blank=(localize "DND5E.None")}}
               </select>
             </div>
           </div>
@@ -109,11 +86,7 @@
               <label>{{localize "DND5E.Recovery"}}</label>
               <div class="form-fields">
                 <select name="{{prefix}}type">
-                  {{selectOptions
-                    @root.recoveryTypes
-                    selected=source.type
-                    blank=(localize "DND5E.None")
-                  }}
+                  {{selectOptions @root.recoveryTypes selected=source.type blank=(localize "DND5E.None")}}
                 </select>
               </div>
             </div>
@@ -125,19 +98,11 @@
               <label>{{localize "DND5E.Formula"}}</label>
               <div class="form-fields">
                 {{#if (eq source.type "formula")}}
-                  <input
-                    type="text"
-                    name="{{prefix}}formula"
-                    value="{{source.formula}}"
-                  />
+                  <input type="text" name="{{prefix}}formula" value="{{source.formula}}" />
                 {{/if}}
                 {{#if formulaOptions}}
                   <select name="{{prefix}}formula">
-                    {{selectOptions
-                      formulaOptions
-                      selected=source.formula
-                      blank=(localize "DND5E.None")
-                    }}
+                    {{selectOptions formulaOptions selected=source.formula blank=(localize "DND5E.None")}}
                   </select>
                 {{/if}}
               </div>

@@ -301,7 +301,7 @@ Hooks.on("ready", async () => {
 // If the newly created item is our DP feature, run the first-drop setup.
 Hooks.on("createItem", (item) => {
   if (DivinityPoints.isDivinityItem(item)) {
-    DivinityPoints.processFirstDrop(item);
+    await DivinityPoints.processFirstDrop(item);
   }
 });
 

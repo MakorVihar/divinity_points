@@ -31,22 +31,12 @@
 import { DP_MODULE_NAME } from "./constants.js";
 import { DivinityPoints } from "./divinitypoints.js";
 
-export class ActorDivinityPointsConfig
-  extends dnd5e.applications.actor.BaseConfigSheetV2
-{
+export class ActorDivinityPointsConfig extends dnd5e.applications.actor.BaseConfigSheetV2 {
   constructor(options) {
     // Merge our options into any options passed by the caller
     foundry.utils.mergeObject(options ?? {}, {
       // CSS classes applied to the window element
-      classes: [
-        "standard-form",
-        "config-sheet",
-        "themed",
-        "sheet",
-        "dnd5e2",
-        "divinitypoints",
-        "application",
-      ],
+      classes: ["standard-form", "config-sheet", "themed", "sheet", "dnd5e2", "divinitypoints", "application"],
       position: { width: 420 },
       submitOnClose: true, // save when the user closes the window
       editable: true,
@@ -137,8 +127,7 @@ export class ActorDivinityPointsConfig
       prefix: `uses.recovery.${index}.`, // used as field name prefix in the form
       source: context.uses?.recovery[index] ?? data,
       // For "recharge" type, provide the dice-face options
-      formulaOptions:
-        data.period === "recharge" ? data.recharge?.options : null,
+      formulaOptions: data.period === "recharge" ? data.recharge?.options : null,
     }));
 
     return context;
@@ -167,18 +156,13 @@ export class ActorDivinityPointsConfig
     const originalUses = foundry.utils.duplicate(item.system.uses);
     const deltaUses = {};
     if (data.uses.max !== originalUses.max) deltaUses.max = data.uses.max;
-    if (data.uses.value !== originalUses.value)
-      deltaUses.spent = data.uses.spent;
+    if (data.uses.value !== originalUses.value) deltaUses.spent = data.uses.spent;
 
     // Merge the submitted data back into the item for the re-render
     const changedUses = foundry.utils.mergeObject(item.system.uses, data.uses);
 
     // Apply the update via the parent class
-    await super._processSubmitData(
-      event,
-      form,
-      Object.keys(deltaUses).length ? { "system.uses": deltaUses } : {},
-    );
+    await super._processSubmitData(event, form, Object.keys(deltaUses).length ? { "system.uses": deltaUses } : {});
 
     this.document.system.uses = changedUses;
     this.render(); // refresh the popup to show updated values

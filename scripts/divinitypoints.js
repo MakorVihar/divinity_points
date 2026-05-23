@@ -92,19 +92,17 @@ export function buildConsumptionConfig() {
       const dpItem = actor ? DivinityPoints.getDivinityPointsItem(actor) : null;
 
       // Determine who sees the chat message (everyone, or GM-only)
-      const whisper = DivinityPoints.settings.dpChatPrivate
-        ? game.users.filter((u) => u.isGM)
-        : [];
+      const whisper = DivinityPoints.settings.dpChatPrivate ? game.users.filter((u) => u.isGM) : [];
 
       // If no DP item is on the sheet, post an error and abort silently.
       // The hook-level block (validateDpConsumption) should have caught this
       // already, but this is a fallback.
       if (!dpItem) {
         dpChatMessage(
-          `<i style='color:red;'>${game.i18n.format(
-            `${DP_MODULE_NAME}.noDpItem`,
-            { actorName: actor?.name ?? "?" },
-          )}</i>`,
+          `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.noDpItem`, {
+            actorName: actor?.name ?? "?",
+            dpResource: DivinityPoints.settings.dpResource,
+          })}</i>`,
           actor?.name ?? "?",
           whisper,
         );
@@ -123,10 +121,7 @@ export function buildConsumptionConfig() {
       // Guard against going below zero (safety net for non-deterministic formulas)
       if (available < cost) {
         dpChatMessage(
-          `<i style='color:red;'>${game.i18n.format(
-            `${DP_MODULE_NAME}.notEnoughDp`,
-            { actorName: actor.name, dpResource: dpItem.name },
-          )}</i>`,
+          `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.notEnoughDp`, { actorName: actor.name, dpResource: dpItem.name })}</i>`,
           actor.name,
           whisper,
         );
@@ -139,8 +134,7 @@ export function buildConsumptionConfig() {
       if (!Array.isArray(updates.item)) updates.item = [];
       const existingEntry = updates.item.find((u) => u._id === dpItem._id);
       if (existingEntry) {
-        existingEntry["system.uses.spent"] =
-          (existingEntry["system.uses.spent"] ?? spent) + cost;
+        existingEntry["system.uses.spent"] = (existingEntry["system.uses.spent"] ?? spent) + cost;
       } else {
         updates.item.push({
           _id: dpItem._id,
@@ -150,15 +144,12 @@ export function buildConsumptionConfig() {
 
       // Post the success message to chat
       dpChatMessage(
-        `<i style='color:green;'>${game.i18n.format(
-          `${DP_MODULE_NAME}.usedDp`,
-          {
-            actorName: actor.name,
-            dpCost: cost,
-            dpResource: dpItem.name,
-            remaining: available - cost,
-          },
-        )}</i>`,
+        `<i style='color:green;'>${game.i18n.format(`${DP_MODULE_NAME}.usedDp`, {
+          actorName: actor.name,
+          dpCost: cost,
+          dpResource: dpItem.name,
+          remaining: available - cost,
+        })}</i>`,
         actor.name,
         whisper,
       );
@@ -176,15 +167,11 @@ export function buildConsumptionConfig() {
       const actor = this.actor;
       const dpItem = actor ? DivinityPoints.getDivinityPointsItem(actor) : null;
       const name = dpItem?.name ?? DivinityPoints.settings.dpResource;
-      const available = dpItem
-        ? dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0)
-        : 0;
+      const available = dpItem ? dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0) : 0;
 
       // Evaluate the cost formula synchronously for display purposes only
       const costRoll = this.resolveCost({ config, evaluate: false });
-      const simpleCost = costRoll.isDeterministic
-        ? costRoll.evaluateSync().total
-        : NaN; // non-deterministic formulas (dice) can't be pre-calculated
+      const simpleCost = costRoll.isDeterministic ? costRoll.evaluateSync().total : NaN; // non-deterministic formulas (dice) can't be pre-calculated
 
       return {
         label: game.i18n.format(`${DP_MODULE_NAME}.consumptionLabel`, {
@@ -246,26 +233,21 @@ export function validateDpConsumption(activity, usageConfig) {
   if (!actor || !DivinityPoints.isActorCharacter(actor)) return;
 
   // Only run if this activity has at least one "divinityPoints" consumption target
-  const dpTargets = (activity?.consumption?.targets ?? []).filter(
-    (t) => t.type === "divinityPoints",
-  );
+  const dpTargets = (activity?.consumption?.targets ?? []).filter((t) => t.type === "divinityPoints");
   if (!dpTargets.length) return;
 
   const shouldBlock = DivinityPoints.settings.dpBlockOnInsufficient;
-  const whisper = DivinityPoints.settings.dpChatPrivate
-    ? game.users.filter((u) => u.isGM)
-    : [];
+  const whisper = DivinityPoints.settings.dpChatPrivate ? game.users.filter((u) => u.isGM) : [];
 
   const dpItem = DivinityPoints.getDivinityPointsItem(actor);
-  const available = dpItem
-    ? dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0)
-    : 0;
+  const available = dpItem ? dpItem.system.uses.max - (dpItem.system.uses.spent ?? 0) : 0;
 
   // ── Case 1: No DP item on the sheet ───────────────────────────────────────
   if (!dpItem) {
     dpChatMessage(
       `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.noDpItem`, {
         actorName: actor.name,
+        dpResource: DivinityPoints.settings.dpResource,
       })}</i>`,
       actor.name,
       whisper,
@@ -300,10 +282,7 @@ export function validateDpConsumption(activity, usageConfig) {
   // ── Case 2: Not enough DP ─────────────────────────────────────────────────
   if (totalCost > 0 && available < totalCost) {
     dpChatMessage(
-      `<i style='color:red;'>${game.i18n.format(
-        `${DP_MODULE_NAME}.notEnoughDp`,
-        { actorName: actor.name, dpResource: dpItem.name },
-      )}</i>`,
+      `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.notEnoughDp`, { actorName: actor.name, dpResource: dpItem.name })}</i>`,
       actor.name,
       whisper,
     );
@@ -356,10 +335,7 @@ export class DivinityPoints {
         dpColorR: game.settings.get(DP_MODULE_NAME, "dpColorR"),
         dpGmOnly: game.settings.get(DP_MODULE_NAME, "dpGmOnly"),
         dpChatPrivate: game.settings.get(DP_MODULE_NAME, "dpChatPrivate"),
-        dpBlockOnInsufficient: game.settings.get(
-          DP_MODULE_NAME,
-          "dpBlockOnInsufficient",
-        ),
+        dpBlockOnInsufficient: game.settings.get(DP_MODULE_NAME, "dpBlockOnInsufficient"),
       };
     } catch (e) {
       return DivinityPoints.defaultSettings;
@@ -379,10 +355,7 @@ export class DivinityPoints {
     document.documentElement.style.setProperty("--dp-left-color", s.dpColorL);
     document.documentElement.style.setProperty("--dp-right-color", s.dpColorR);
     // "dp-scroll" is the CSS keyframes animation name defined in dp-styles.css
-    document.documentElement.style.setProperty(
-      "--dp-animation-name",
-      s.dpAnimateBar ? "dp-scroll" : "none",
-    );
+    document.documentElement.style.setProperty("--dp-animation-name", s.dpAnimateBar ? "dp-scroll" : "none");
   }
 
   // ── Actor helpers ──────────────────────────────────────────────────────────
@@ -443,8 +416,7 @@ export class DivinityPoints {
 
     return (
       // Compendium origin check (legacy — no compendium is currently shipped)
-      item.flags?.core?.sourceId ===
-        `Compendium.${DP_MODULE_NAME}.module-items.Item.${DP_ITEM_ID}` ||
+      item.flags?.core?.sourceId === `Compendium.${DP_MODULE_NAME}.module-items.Item.${DP_ITEM_ID}` ||
       // Source label check (primary identifier)
       item.system?.source?.custom === DivinityPoints.settings.dpResource ||
       // Name match (fallback for manually renamed items)
@@ -499,13 +471,7 @@ export class DivinityPoints {
 
     // Fallback: scan feats for the source.custom match
     // This handles actors whose flag was lost or never set
-    return (
-      items.find(
-        (i) =>
-          i.type === "feat" &&
-          i.system?.source?.custom === DivinityPoints.settings.dpResource,
-      ) ?? false
-    );
+    return items.find((i) => i.type === "feat" && i.system?.source?.custom === DivinityPoints.settings.dpResource) ?? false;
   }
 
   // ── Formula evaluation ─────────────────────────────────────────────────────
@@ -532,10 +498,7 @@ export class DivinityPoints {
       const roll = await Roll.create(str, rollData).evaluate();
       return roll.total;
     } catch (e) {
-      console.warn(
-        `${DP_MODULE_NAME} | Formula evaluation failed: "${str}"`,
-        e,
-      );
+      console.warn(`${DP_MODULE_NAME} | Formula evaluation failed: "${str}"`, e);
       return 0;
     }
   }
@@ -561,12 +524,7 @@ export class DivinityPoints {
    * @param {number|null}  max   - New maximum
    * @param {number|null}  spent - New spent count (direct)
    */
-  static async updateDivinityItem(
-    item,
-    value = null,
-    max = null,
-    spent = null,
-  ) {
+  static async updateDivinityItem(item, value = null, max = null, spent = null) {
     if (!item) return;
 
     const update = {};
@@ -611,11 +569,7 @@ export class DivinityPoints {
       );
       // Rename the duplicate so the GM can see what happened and delete it
       await item.update({
-        name:
-          item.name +
-          " (" +
-          game.i18n.localize(`${DP_MODULE_NAME}.duplicated`) +
-          ")",
+        name: item.name + " (" + game.i18n.localize(`${DP_MODULE_NAME}.duplicated`) + ")",
       });
       return;
     }
@@ -664,11 +618,11 @@ export class DivinityPoints {
     if (typeof formula === "string" && formula.includes("@")) {
       const newMax = await DivinityPoints.withActorData(formula, actor);
 
-      if (!isNaN(newMax)) {
-        // Don't let spent exceed the new maximum
-        const newSpent = Math.min(dpItem.system.uses.spent ?? 0, newMax);
-        await DivinityPoints.updateDivinityItem(dpItem, null, newMax, newSpent);
-      }
+      if (isNaN(newMax)) return;
+
+      // Don't let spent exceed the new maximum
+      const newSpent = Math.min(dpItem.system.uses.spent ?? 0, newMax);
+      await DivinityPoints.updateDivinityItem(dpItem, null, newMax, newSpent);
     }
   }
 
@@ -685,9 +639,7 @@ export class DivinityPoints {
    */
   static async updateAllDpItemSources(newName, oldName) {
     if (!game.user.isGM) return;
-    console.log(
-      `${DP_MODULE_NAME} | Renaming items: "${oldName}" → "${newName}"`,
-    );
+    console.log(`${DP_MODULE_NAME} | Renaming items: "${oldName}" → "${newName}"`);
 
     // Update items in the world Items directory
     for (const item of game.items) {
@@ -727,32 +679,17 @@ export class DivinityPoints {
     const dpItem = DivinityPoints.getDivinityPointsItem(actor);
     if (!dpItem) return;
 
-    let currentMax = await DivinityPoints.withActorData(
-      dpItem.system.uses.max,
-      actor,
-    );
+    let currentMax = await DivinityPoints.withActorData(dpItem.system.uses.max, actor);
     let currentVal = currentMax - (dpItem.system.uses.spent ?? 0);
 
     // Override max if a new value was provided
-    if (max !== undefined && max !== null && max !== "")
-      currentMax = await DivinityPoints.withActorData(String(max), actor);
+    if (max !== undefined && max !== null && max !== "") currentMax = await DivinityPoints.withActorData(String(max), actor);
 
     // Override current value if a new value was provided, clamped to [0, max]
     if (uses !== undefined && uses !== null && uses !== "")
-      currentVal = Math.max(
-        0,
-        Math.min(
-          await DivinityPoints.withActorData(String(uses), actor),
-          currentMax,
-        ),
-      );
+      currentVal = Math.max(0, Math.min(await DivinityPoints.withActorData(String(uses), actor), currentMax));
 
-    await DivinityPoints.updateDivinityItem(
-      dpItem,
-      currentVal,
-      currentMax,
-      currentMax - currentVal,
-    );
+    await DivinityPoints.updateDivinityItem(dpItem, currentVal, currentMax, currentMax - currentVal);
   }
 
   // ── Character sheet bar injection ──────────────────────────────────────────
@@ -792,24 +729,19 @@ export class DivinityPoints {
     const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0; // bar fill %
 
     // Render the bar template with all the data it needs
-    const rendered = await foundry.applications.handlebars.renderTemplate(
-      `modules/${DP_MODULE_NAME}/templates/divinity-points-sheet-tracker.hbs`,
-      {
-        isV2: type === "v2",
-        isNPC: type === "npc",
-        editable: editable,
-        name: dpItem.name,
-        _id: dpItem._id,
-        max,
-        value,
-        percent,
-      },
-    );
+    const rendered = await foundry.applications.handlebars.renderTemplate(`modules/${DP_MODULE_NAME}/templates/divinity-points-sheet-tracker.hbs`, {
+      isV2: type === "v2",
+      isNPC: type === "npc",
+      editable: editable,
+      name: dpItem.name,
+      _id: dpItem._id,
+      max,
+      value,
+      percent,
+    });
 
     // Wrap the rendered HTML in a container div for easy removal on re-render
-    const container = $('<div class="dp-bar-container"></div>').append(
-      rendered,
-    );
+    const container = $('<div class="dp-bar-container"></div>').append(rendered);
 
     // Find where to insert the bar — location differs per sheet type
     let sidebarSelector = ".sidebar .stats"; // default
@@ -888,12 +820,7 @@ export class DivinityPoints {
     if (isNaN(newValue) || newValue < 0) newValue = 0;
     if (newValue > max) newValue = max;
 
-    await DivinityPoints.updateDivinityItem(
-      item,
-      newValue,
-      null,
-      max - newValue,
-    );
+    await DivinityPoints.updateDivinityItem(item, newValue, null, max - newValue);
 
     // Restore the label and hide the input
     $(".progress.dp-points .label", html).removeAttr("hidden");

@@ -68,8 +68,7 @@ async function link(target, linkPath, kind) {
 
 if (!fs.existsSync("foundry-config.yaml")) {
   console.error(
-    "foundry-config.yaml not found — create it in the project root with:\n" +
-      '  installPath: "C:/path/to/FoundryVTT"  # your Foundry install directory',
+    "foundry-config.yaml not found — create it in the project root with:\n" + '  installPath: "C:/path/to/FoundryVTT"  # your Foundry install directory',
   );
   process.exit(1);
 }
@@ -89,13 +88,9 @@ try {
 
   // Electron installs (the standard download) nest under resources/app.
   // Node.js installs (self-hosted / headless) do not.
-  const nested = fs.existsSync(
-    path.join(foundryConfig.installPath, "resources", "app"),
-  );
+  const nested = fs.existsSync(path.join(foundryConfig.installPath, "resources", "app"));
 
-  fileRoot = nested
-    ? path.join(foundryConfig.installPath, "resources", "app")
-    : foundryConfig.installPath;
+  fileRoot = nested ? path.join(foundryConfig.installPath, "resources", "app") : foundryConfig.installPath;
 
   console.log(`Foundry root: ${fileRoot}`);
 } catch (err) {
@@ -139,9 +134,7 @@ const tsconfigSrc = path.join(fileRoot, "tsconfig.json");
 if (fs.existsSync(tsconfigSrc)) {
   await link(tsconfigSrc, path.join("foundry", "tsconfig.json"), "file");
 } else {
-  console.log(
-    `  – skipped foundry/tsconfig.json (not found at ${tsconfigSrc})`,
-  );
+  console.log(`  – skipped foundry/tsconfig.json (not found at ${tsconfigSrc})`);
 }
 
 // ── dnd5e system ──────────────────────────────────────────────────────────
@@ -156,6 +149,4 @@ if (foundryConfig.dataPath) {
   console.log("  – skipped dnd5e-system (no dataPath in foundry-config.yaml)");
 }
 
-console.log(
-  "\nDone. If VS Code is open, reload the window (Ctrl+Shift+P → Reload Window).",
-);
+console.log("\nDone. If VS Code is open, reload the window (Ctrl+Shift+P → Reload Window).");

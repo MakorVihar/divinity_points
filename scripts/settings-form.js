@@ -94,9 +94,7 @@ export class DpSettingsForm extends HandlebarsApplicationMixin(ApplicationV2) {
       colorR: game.settings.get(DP_MODULE_NAME, "dpColorR"),
       animate: game.settings.get(DP_MODULE_NAME, "dpAnimateBar"),
       // The footer template expects a `buttons` array
-      buttons: [
-        { type: "submit", icon: "fa-solid fa-save", label: "SETTINGS.Save" },
-      ],
+      buttons: [{ type: "submit", icon: "fa-solid fa-save", label: "SETTINGS.Save" }],
     };
   }
 
@@ -124,14 +122,9 @@ export class DpSettingsForm extends HandlebarsApplicationMixin(ApplicationV2) {
     // Read the current values from the form fields.
     // The ?. (optional chaining) returns undefined if the element isn't found,
     // and ?? falls back to the saved setting value.
-    const colorL =
-      form.querySelector("color-picker[name='colorL']")?.value ??
-      game.settings.get(DP_MODULE_NAME, "dpColorL");
-    const colorR =
-      form.querySelector("color-picker[name='colorR']")?.value ??
-      game.settings.get(DP_MODULE_NAME, "dpColorR");
-    const animate =
-      form.querySelector("input[name='animate']")?.checked ?? true;
+    const colorL = form.querySelector("color-picker[name='colorL']")?.value ?? game.settings.get(DP_MODULE_NAME, "dpColorL");
+    const colorR = form.querySelector("color-picker[name='colorR']")?.value ?? game.settings.get(DP_MODULE_NAME, "dpColorR");
+    const animate = form.querySelector("input[name='animate']")?.checked ?? true;
 
     // Update the preview bar's inline styles directly
     const fill = form.querySelector(".dp-preview-fill");
@@ -170,21 +163,9 @@ export class DpSettingsForm extends HandlebarsApplicationMixin(ApplicationV2) {
     const data = foundry.utils.expandObject(formData.object);
 
     // Save each setting — fall back to the default if the value is missing
-    await game.settings.set(
-      DP_MODULE_NAME,
-      "dpColorL",
-      data.colorL ?? "#4a1060",
-    );
-    await game.settings.set(
-      DP_MODULE_NAME,
-      "dpColorR",
-      data.colorR ?? "#c89020",
-    );
-    await game.settings.set(
-      DP_MODULE_NAME,
-      "dpAnimateBar",
-      data.animate ?? true,
-    );
+    await game.settings.set(DP_MODULE_NAME, "dpColorL", data.colorL ?? "#4a1060");
+    await game.settings.set(DP_MODULE_NAME, "dpColorR", data.colorR ?? "#c89020");
+    await game.settings.set(DP_MODULE_NAME, "dpAnimateBar", data.animate ?? true);
 
     // Re-apply CSS variables so the character sheet bar updates immediately
     DivinityPoints.setDpColors();

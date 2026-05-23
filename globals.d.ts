@@ -54,11 +54,7 @@ declare global {
 
   interface Window {
     getDivinityPointsItem: (actor: Actor) => Item | false;
-    alterDivinityPoints: (
-      actor: Actor,
-      uses: number,
-      max: number,
-    ) => Promise<void>;
+    alterDivinityPoints: (actor: Actor, uses: number, max: number) => Promise<void>;
   }
 
   // Typed access to actor.flags["dnd5edivinitypoints"].
