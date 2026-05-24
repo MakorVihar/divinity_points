@@ -2,20 +2,21 @@
   "version": "0.2.0",
   "configurations": [
     {
-      // Attaches to a Chrome tab that's already open on your Foundry instance.
-      // Start Foundry first, open it in Chrome, THEN hit F5 here.
-      // This is the safest option — Chrome manages its own process.
-      "name": "Attach to Foundry (Chrome)",
-      "type": "chrome",
-      "request": "attach",
-      "port": 9222,
-      "urlFilter": "http://localhost:30000/*",
+      "name": "Launch Foundry in Firefox",
+      "type": "firefox",
+      "request": "launch",
+      "url": "http://localhost:30000",
       "webRoot": "${workspaceFolder}",
-      // Maps the URL path Foundry uses back to your source files on disk,
-      // so breakpoints in VS Code land on the right lines.
-      "sourceMapPathOverrides": {
-        "/modules/dnd5e-divinitypoints/*": "${workspaceFolder}/*"
-      }
+      // This tells VS Code where to find your Firefox installation
+      "executable": "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
+      // These are the arguments passed to Firefox on startup
+      "runtimeArgs": ["-start-debugger-server", "9222", "-new-window"],
+      "pathMappings": [
+        {
+          "url": "http://localhost:30000/modules/dnd5e-divinitypoints/",
+          "path": "${workspaceFolder}"
+        }
+      ]
     },
     {
       // Launches a fresh Chrome tab pointed at your Foundry instance.

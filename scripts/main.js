@@ -30,11 +30,7 @@
 // ES module imports — each file exports the things it wants to share.
 
 import { DP_MODULE_NAME } from "./constants.js";
-import {
-  DivinityPoints,
-  buildConsumptionConfig,
-  validateDpConsumption,
-} from "./divinitypoints.js";
+import { DivinityPoints, buildConsumptionConfig, validateDpConsumption } from "./divinitypoints.js";
 import { ActorDivinityPointsConfig } from "./actor-bar-config.js";
 import { DpSettingsForm } from "./settings-form.js";
 
@@ -104,15 +100,11 @@ Hooks.on("init", () => {
   // buildConsumptionConfig() returns a plain object with the functions dnd5e
   // expects: consume() handles the actual deduction, consumptionLabels()
   // provides the hint text shown in the usage dialog.
-  CONFIG.DND5E.activityConsumptionTypes.divinityPoints =
-    buildConsumptionConfig();
+  CONFIG.DND5E.activityConsumptionTypes.divinityPoints = buildConsumptionConfig();
 
   // Register "Divinity Points" as a class feature subtype so it appears
   // correctly in the Feature Type dropdown on the item sheet.
-  game.dnd5e.config.featureTypes.class.subtypes.dp = game.settings.get(
-    DP_MODULE_NAME,
-    "dpResource",
-  );
+  game.dnd5e.config.featureTypes.class.subtypes.dp = game.settings.get(DP_MODULE_NAME, "dpResource");
 
   // ── Bar colour settings (shown via a custom colour-picker form) ───────────
   // These three settings are managed through the "Configure Bar Colours" button
@@ -211,10 +203,8 @@ Hooks.on("init", () => {
   // Expose helper functions to the global window so GMs can use them in macros:
   //   getDivinityPointsItem(actor) → returns the DP item or false
   //   alterDivinityPoints(actor, uses, max) → programmatically change DP
-  window.getDivinityPointsItem =
-    DivinityPoints.getDivinityPointsItem.bind(DivinityPoints);
-  window.alterDivinityPoints =
-    DivinityPoints.alterDivinityPoints.bind(DivinityPoints);
+  window.getDivinityPointsItem = DivinityPoints.getDivinityPointsItem.bind(DivinityPoints);
+  window.alterDivinityPoints = DivinityPoints.alterDivinityPoints.bind(DivinityPoints);
 });
 
 // ── ready hook ────────────────────────────────────────────────────────────────
@@ -228,11 +218,7 @@ Hooks.on("ready", async () => {
   // Check whether the Divinity Points item already exists in the world's
   // Items directory. We identify it by its source.custom field matching
   // the current resource name setting.
-  const existingItem = game.items.find(
-    (i) =>
-      i.type === "feat" &&
-      i.system?.source?.custom === DivinityPoints.settings.dpResource,
-  );
+  const existingItem = game.items.find((i) => i.type === "feat" && i.system?.source?.custom === DivinityPoints.settings.dpResource);
 
   if (existingItem) {
     // Item exists — make sure the flag is set and exit early
@@ -299,7 +285,7 @@ Hooks.on("ready", async () => {
 
 // Fires when any item is created anywhere (world, actor sheet, etc.)
 // If the newly created item is our DP feature, run the first-drop setup.
-Hooks.on("createItem", (item) => {
+Hooks.on("createItem", async (item) => {
   if (DivinityPoints.isDivinityItem(item)) {
     await DivinityPoints.processFirstDrop(item);
   }
@@ -342,12 +328,9 @@ Hooks.on("updateActor", async (actor) => {
 //
 // validateDpConsumption() returns false synchronously to block, or undefined
 // to allow. Chat messages inside it are fire-and-forget (no await needed).
-Hooks.on(
-  "dnd5e.preActivityConsumption",
-  (activity, usageConfig, messageConfig) => {
-    return validateDpConsumption(activity, usageConfig, messageConfig);
-  },
-);
+Hooks.on("dnd5e.preActivityConsumption", (activity, usageConfig, messageConfig) => {
+  return validateDpConsumption(activity, usageConfig, messageConfig);
+});
 
 // ── Character sheet render hooks ──────────────────────────────────────────────
 // These fire whenever a character sheet is rendered (opened or refreshed).

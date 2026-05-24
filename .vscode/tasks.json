@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Firefox Debugging",
+      "type": "process",
+      "command": "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
+      "args": ["-start-debugger-server", "9222", "-new-window", "http://localhost:30000"],
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}
