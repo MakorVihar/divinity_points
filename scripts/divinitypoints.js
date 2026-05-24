@@ -415,8 +415,6 @@ export class DivinityPoints {
     if (item.type !== "feat") return false;
 
     return (
-      // Compendium origin check (legacy — no compendium is currently shipped)
-      item.flags?.core?.sourceId === `Compendium.${DP_MODULE_NAME}.module-items.Item.${DP_ITEM_ID}` ||
       // Source label check (primary identifier)
       item.system?.source?.custom === DivinityPoints.settings.dpResource ||
       // Name match (fallback for manually renamed items)
@@ -510,9 +508,8 @@ export class DivinityPoints {
    * Pass null for any parameter you don't want to change.
    *
    * Examples:
-   *   updateDivinityItem(item, 3, null, null)    → set current value to 3
-   *   updateDivinityItem(item, null, 5, null)    → set maximum to 5
-   *   updateDivinityItem(item, null, null, 2)    → set spent to 2
+   *   updateDivinityItem(item, 3, null)    → set current value to 3
+   *   updateDivinityItem(item, null, 5)    → set maximum to 5
    *
    * HOW dnd5e TRACKS USES:
    *   Items store uses as { max, spent } where:
@@ -522,17 +519,18 @@ export class DivinityPoints {
    * @param {Item}         item
    * @param {number|null}  value - New current value (calculates spent from max - value)
    * @param {number|null}  max   - New maximum
-   * @param {number|null}  spent - New spent count (direct)
    */
-  static async updateDivinityItem(item, value = null, max = null, spent = null) {
+  static async updateDivinityItem(item, value = null, max = null) {
     if (!item) return;
 
     const update = {};
 
+    // Update Max
     if (max !== null) update["system.uses.max"] = max;
-    if (spent !== null) update["system.uses.spent"] = spent;
+
+    // Update Spent using Value
     if (value !== null) {
-      // Convert from "current value" to "spent" (dnd5e's internal format)
+      // Convert from "current value" to "newSpent" (dnd5e's internal format)
       const effectiveMax = max ?? item.system.uses.max;
       update["system.uses.spent"] = effectiveMax - value;
     }
@@ -588,42 +586,6 @@ export class DivinityPoints {
     await actor.update({
       flags: { dnd5edivinitypoints: { item: item._id } },
     });
-
-    // ── Set initial maximum from formula ─────────────────────────────────────
-    await DivinityPoints.recalculateMax(actor, item);
-  }
-
-  // ── Maximum recalculation ──────────────────────────────────────────────────
-
-  /**
-   * Re-evaluates the item's max formula against the actor's current data
-   * and updates the item if the value has changed.
-   *
-   * This is called:
-   *  - When the item is first dropped onto a sheet
-   *  - Every time the actor is updated (level up, ability score change, etc.)
-   *
-   * Formula example: "@abilities.cua_0.mod" evaluates to the divinity modifier.
-   *
-   * @param {Actor} actor
-   * @param {Item}  dpItem
-   */
-  static async recalculateMax(actor, dpItem) {
-    if (!dpItem) return;
-
-    const formula = dpItem.system?.uses?.max;
-
-    // Only re-evaluate if the max is a formula (contains @)
-    // Plain numbers are left alone (manual overrides)
-    if (typeof formula === "string" && formula.includes("@")) {
-      const newMax = await DivinityPoints.withActorData(formula, actor);
-
-      if (isNaN(newMax)) return;
-
-      // Don't let spent exceed the new maximum
-      const newSpent = Math.min(dpItem.system.uses.spent ?? 0, newMax);
-      await DivinityPoints.updateDivinityItem(dpItem, null, newMax, newSpent);
-    }
   }
 
   // ── Rename propagation ─────────────────────────────────────────────────────
@@ -689,7 +651,7 @@ export class DivinityPoints {
     if (uses !== undefined && uses !== null && uses !== "")
       currentVal = Math.max(0, Math.min(await DivinityPoints.withActorData(String(uses), actor), currentMax));
 
-    await DivinityPoints.updateDivinityItem(dpItem, currentVal, currentMax, currentMax - currentVal);
+    await DivinityPoints.updateDivinityItem(dpItem, currentVal, currentMax);
   }
 
   // ── Character sheet bar injection ──────────────────────────────────────────
@@ -713,7 +675,7 @@ export class DivinityPoints {
     // In v13, actor came from data.actor. In v14 context structure differs —
     // always pull directly from the application instance instead.
     const actor = app.actor ?? app.document;
-    const editable = app.isEditable ?? app.options?.editable ?? true;
+    const editable = (app.isEditable ?? app.options?.editable ?? true) && (!DivinityPoints.settings.dpGmOnly || game.user.isGM);
 
     // Skip if actor type isn't character/npc, or bar is disabled
     if (!["character", "npc"].includes(actor?.type)) return;
@@ -820,7 +782,7 @@ export class DivinityPoints {
     if (isNaN(newValue) || newValue < 0) newValue = 0;
     if (newValue > max) newValue = max;
 
-    await DivinityPoints.updateDivinityItem(item, newValue, null, max - newValue);
+    await DivinityPoints.updateDivinityItem(item, newValue, null);
 
     // Restore the label and hide the input
     $(".progress.dp-points .label", html).removeAttr("hidden");

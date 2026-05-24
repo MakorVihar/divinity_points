@@ -188,15 +188,6 @@ Hooks.on("init", () => {
     default: true,
   });
 
-  // Internal flag: has the starter world item been created yet?
-  // This is config: false so it doesn't clutter the settings UI.
-  game.settings.register(DP_MODULE_NAME, "starterItemCreated", {
-    scope: "world",
-    config: false,
-    type: Boolean,
-    default: false,
-  });
-
   // Apply the saved bar colours to the page CSS variables immediately
   DivinityPoints.setDpColors();
 
@@ -220,15 +211,10 @@ Hooks.on("ready", async () => {
   // the current resource name setting.
   const existingItem = game.items.find((i) => i.type === "feat" && i.system?.source?.custom === DivinityPoints.settings.dpResource);
 
-  if (existingItem) {
-    // Item exists — make sure the flag is set and exit early
-    await game.settings.set(DP_MODULE_NAME, "starterItemCreated", true);
-    return;
-  }
+  // Item exists — exit early
+  if (existingItem) return;
 
   // Item is missing (either first run, or GM deleted it) — recreate it
-  await game.settings.set(DP_MODULE_NAME, "starterItemCreated", false);
-
   // Description shown on the item's sheet
   const description = [
     "<h1>Divinity Points</h1>",
@@ -265,8 +251,6 @@ Hooks.on("ready", async () => {
         },
       },
     });
-
-    await game.settings.set(DP_MODULE_NAME, "starterItemCreated", true);
 
     // Show a permanent notification pointing the GM to the new item
     ui.notifications.info(
@@ -305,20 +289,6 @@ Hooks.on("preDeleteItem", (item) => {
   }
 });
 
-// ── Actor update hook ─────────────────────────────────────────────────────────
-// Fires whenever an actor's data changes (level up, ability score change, etc.)
-// We use this to keep the DP maximum in sync with the divinity modifier.
-Hooks.on("updateActor", async (actor) => {
-  // Skip NPCs without DP, non-character actors, and actors we don't own
-  if (!DivinityPoints.isActorCharacter(actor)) return;
-  if (!DivinityPoints.userHasActorOwnership(actor)) return;
-
-  const dpItem = DivinityPoints.getDivinityPointsItem(actor);
-  if (dpItem) {
-    await DivinityPoints.recalculateMax(actor, dpItem);
-  }
-});
-
 // ── Consumption validation hook ───────────────────────────────────────────────
 // Fires before dnd5e processes the consumption for any activity use.
 // IMPORTANT: This hook MUST be synchronous (no async/await).
@@ -328,8 +298,8 @@ Hooks.on("updateActor", async (actor) => {
 //
 // validateDpConsumption() returns false synchronously to block, or undefined
 // to allow. Chat messages inside it are fire-and-forget (no await needed).
-Hooks.on("dnd5e.preActivityConsumption", (activity, usageConfig, messageConfig) => {
-  return validateDpConsumption(activity, usageConfig, messageConfig);
+Hooks.on("dnd5e.preActivityConsumption", (activity, usageConfig) => {
+  return validateDpConsumption(activity, usageConfig);
 });
 
 // ── Character sheet render hooks ──────────────────────────────────────────────

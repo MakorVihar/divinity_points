@@ -44,7 +44,6 @@ export class ActorDivinityPointsConfig extends dnd5e.applications.actor.BaseConf
       closeOnSubmit: false, // keep the window open after saving
       // Register named action handlers (called by data-action buttons in the template)
       actions: {
-        updateDpMax: ActorDivinityPointsConfig._updateDpMax,
         deleteRecovery: ActorDivinityPointsConfig._deleteRecovery,
         addRecovery: ActorDivinityPointsConfig._addRecovery,
       },
@@ -196,16 +195,6 @@ export class ActorDivinityPointsConfig extends dnd5e.applications.actor.BaseConf
 
     uses.recovery.splice(idx, 1); // remove the entry at this index
     this.document.update({ "system.uses.recovery": uses.recovery });
-  }
-
-  /**
-   * Recalculates the maximum from the formula and updates the item.
-   * Called by: <button data-action="updateDpMax">
-   */
-  static async _updateDpMax(event, target) {
-    const actor = this.document.parent;
-    await DivinityPoints.recalculateMax(actor, this.document);
-    this.render(true);
   }
 
   // ── Window title ───────────────────────────────────────────────────────────
