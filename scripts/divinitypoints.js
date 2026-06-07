@@ -373,17 +373,6 @@ export class DivinityPoints {
   }
 
   /**
-   * Returns true if the current user has full ownership of the actor.
-   * Permission level 3 = OWNER in Foundry.
-   *
-   * @param {Actor} actor
-   * @returns {boolean}
-   */
-  static userHasActorOwnership(actor) {
-    return actor.permission === 3;
-  }
-
-  /**
    * Reads the actor flag that stores which item ID is the DP item.
    * We store this when the item is first dropped so we can find it
    * reliably even after it's been renamed.
@@ -392,8 +381,8 @@ export class DivinityPoints {
    * @returns {string|false} The item _id, or false if not set
    */
   static getActorFlagDpItem(actor) {
-    const id = actor?.flags?.dnd5edivinitypoints?.item;
-    return typeof id === "string" && id.trim().length > 0 ? id : false;
+    const id = actor?.getFlag("dnd5e-divinitypoints", "item");
+    return typeof id === "string" && id.trim() ? id : false;
   }
 
   // ── Item identification ────────────────────────────────────────────────────
@@ -420,29 +409,6 @@ export class DivinityPoints {
       // Name match (fallback for manually renamed items)
       item.name === DivinityPoints.settings.dpResource
     );
-  }
-
-  /**
-   * Alternative identifier used during rename operations.
-   * During a rename, source.custom hasn't been updated yet, so we can't
-   * use isDivinityItem(). Instead we check whether any actor's flag points
-   * to this item's ID.
-   *
-   * @param {Item} item
-   * @returns {boolean}
-   */
-  static isDivinityItemByFlag(item) {
-    // Actor-embedded item: check if the owning actor's flag points to this ID
-    if (item.parent?.documentName === "Actor") {
-      return DivinityPoints.getActorFlagDpItem(item.parent) === item._id;
-    }
-
-    // World item: check if any actor in the game has flagged this ID
-    if (item.type !== "feat") return false;
-    for (const actor of game.actors ?? []) {
-      if (DivinityPoints.getActorFlagDpItem(actor) === item._id) return true;
-    }
-    return false;
   }
 
   /**
@@ -556,7 +522,7 @@ export class DivinityPoints {
    */
   static async processFirstDrop(item) {
     const actor = item.parent; // the actor it was dropped onto
-    if (!actor || !DivinityPoints.userHasActorOwnership(actor)) return;
+    if (!actor || !actor.isOwner) return;
 
     // ── Duplicate check ─────────────────────────────────────────────────────
     if (DivinityPoints.getActorFlagDpItem(actor)) {
@@ -583,9 +549,8 @@ export class DivinityPoints {
     // ── Store item ID in actor flags ─────────────────────────────────────────
     // This allows getDivinityPointsItem() to find it instantly by ID rather
     // than scanning all feats by name.
-    await actor.update({
-      flags: { dnd5edivinitypoints: { item: item._id } },
-    });
+    // Store item ID in actor flags safely
+    await actor.setFlag("dnd5e-divinitypoints", "item", item._id);
   }
 
   // ── Rename propagation ─────────────────────────────────────────────────────
@@ -672,6 +637,9 @@ export class DivinityPoints {
    * @param {string} type      - Sheet variant: "v2", "v1", or "npc"
    */
   static async alterCharacterSheet(app, html, context, type) {
+    // Normalize html: Foundry v13 may pass a jQuery object; unwrap it to a plain Element
+    if (html instanceof HTMLElement === false) html = html[0] ?? html;
+
     // In v13, actor came from data.actor. In v14 context structure differs —
     // always pull directly from the application instance instead.
     const actor = app.actor ?? app.document;
@@ -703,18 +671,21 @@ export class DivinityPoints {
     });
 
     // Wrap the rendered HTML in a container div for easy removal on re-render
-    const container = $('<div class="dp-bar-container"></div>').append(rendered);
+    //const container = $('<div class="dp-bar-container"></div>').append(rendered);
+    const container = document.createElement("div");
+    container.className = "dp-bar-container";
+    container.innerHTML = rendered;
 
     // Find where to insert the bar — location differs per sheet type
     let sidebarSelector = ".sidebar .stats"; // default
     let insertAfter = true; // true = after, false = prepend inside
 
-    if (app.classList?.value?.includes("tidy5e-sheet")) {
+    if (app.classList?.contains("tidy5e-sheet")) {
       // Tidy5e sheet has a different sidebar structure
       sidebarSelector = ".attributes .side-panel, .tidy-tab.favorites";
       insertAfter = false;
     } else if (type === "v2") {
-      sidebarSelector = ".sidebar .stats > .meter-group:last";
+      sidebarSelector = ".sidebar .stats > .meter-group:last-child";
     } else if (type === "npc") {
       sidebarSelector = ".sheet-body .sidebar";
       insertAfter = false;
@@ -724,59 +695,74 @@ export class DivinityPoints {
     }
 
     // Remove any previous bar (prevents duplicates when the sheet re-renders)
-    $(`${sidebarSelector} .dp-bar-container`, $(html)).remove();
+    html.querySelectorAll(".dp-bar-container").forEach((el) => el.remove());
 
-    // Insert the bar in the correct position
-    if (insertAfter) {
-      $(sidebarSelector, $(html)).after(container);
-    } else {
-      $(sidebarSelector, $(html)).prepend(container);
+    const target = html.querySelector(sidebarSelector);
+    // Only attempt insertion if the target actually exists
+    if (target) {
+      if (insertAfter) {
+        target.after(container);
+      } else {
+        target.prepend(container);
+      }
     }
 
     // ── Event handlers ──────────────────────────────────────────────────────
 
     // Gear icon → open the config popup (to edit max, add recovery periods, etc.)
-    $(".config-button.divinityPoints", $(html))
-      .off("click")
-      .on("click", (e) => {
+    const configButton = html.querySelector(".config-button.divinityPoints");
+    if (configButton) {
+      configButton.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         new ActorDivinityPointsConfig({ document: dpItem }).render(true);
       });
+    }
 
     // Click on the value label → replace with an editable input
-    $(".progress.dp-points .label", $(html))
-      .off("click")
-      .on("click", (e) => {
+    const label = html.querySelector(".progress.dp-points .label");
+    const input = html.querySelector(".progress.dp-points input.dp_value");
+
+    if (label && input) {
+      label.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        $(".progress.dp-points .label", $(html)).attr("hidden", "hidden");
-        const input = $(".progress.dp-points input.dp_value", $(html));
-        input.removeAttr("hidden").focus().select();
+
+        // Hide label, show input natively
+        label.hidden = true;
+        input.hidden = false;
+
+        // Focus and select
+        input.focus();
+        input.select();
       });
+    }
 
     // Input field: save on blur (clicking away) or pressing Enter
-    $(".progress.dp-points input.dp_value", $(html))
-      .off("blur keydown")
-      .on("blur", async (e) => {
-        await DivinityPoints._handleBarValueChange(dpItem, e, $(html), max);
-      })
-      .on("keydown", (e) => {
-        if (e.key === "Enter") e.target.blur(); // triggers the blur handler above
+    if (input) {
+      // Event 1: Blur (clicking away)
+      input.addEventListener("blur", async (e) => {
+        await DivinityPoints._handleBarValueChange(dpItem, e, html, max);
       });
+
+      // Event 2: Keydown
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") e.target.blur(); // This forces the blur event above to fire
+      });
+    }
   }
 
   /**
    * Saves the new value typed into the bar's editable input field.
    * Called when the input loses focus (blur event).
    *
-   * @param {Item}   item  - The DP item to update
-   * @param {Event}  event - The blur event (contains the new value)
-   * @param {jQuery} html  - The sheet HTML (to restore the label display)
-   * @param {number} max   - The current maximum (to clamp the value)
+   * @param {Item}        item  - The DP item to update
+   * @param {Event}       event - The blur event (contains the new value)
+   * @param {HTMLElement} html  - The sheet HTML (to restore the label display)
+   * @param {number}      max   - The current maximum (to clamp the value)
    */
   static async _handleBarValueChange(item, event, html, max) {
-    let newValue = parseInt($(event.target).val());
+    let newValue = parseInt(event.target.value, 10);
 
     // Clamp to valid range: [0, max]
     if (isNaN(newValue) || newValue < 0) newValue = 0;
@@ -784,8 +770,10 @@ export class DivinityPoints {
 
     await DivinityPoints.updateDivinityItem(item, newValue, null);
 
-    // Restore the label and hide the input
-    $(".progress.dp-points .label", html).removeAttr("hidden");
-    $(event.target).attr("hidden", "hidden");
+    // Safely restore the label in one line
+    html.querySelector(".progress.dp-points .label")?.removeAttribute("hidden");
+
+    // Hide the input natively
+    event.target.hidden = true;
   }
 }

@@ -30,9 +30,11 @@
     // by tools/create-symlinks.mjs.  They declare game, canvas, Hooks, Actor,
     // Item, etc. as globals — no separate foundry-vtt-types package needed.
     "foundry/client/global.d.mts",
-    "foundry/common/primitives/global.d.mts"
+    "foundry/common/primitives/global.d.mts",
     // NOTE: client.mjs is the *implementation*, not the declarations.
     //       Including it just adds noise; the .d.mts files are all you need.
+
+    "tests/tests.js"
   ],
   "typeAcquisition": {
     "include": ["jquery"]

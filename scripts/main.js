@@ -324,3 +324,9 @@ Hooks.on("renderActorSheet5eCharacter", (app, html, context, options) => {
 Hooks.on("renderNPCActorSheet", (app, html, context, options) => {
   DivinityPoints.alterCharacterSheet(app, html, context, "npc");
 });
+
+Hooks.on("quenchReady", (quench) => {
+  import("../tests/tests.js").then(({ registerTests }) => {
+    registerTests(quench);
+  });
+});
