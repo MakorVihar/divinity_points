@@ -285,7 +285,7 @@ Hooks.on("preDeleteItem", (item) => {
   const trackedItemId = DivinityPoints.getActorFlagDpItem(actor);
   if (item._id === trackedItemId) {
     // Remove the flag by setting it to null with the special "-=" prefix
-    actor.update({ [`flags.dnd5edivinitypoints.-=item`]: null });
+    actor.update({ [`flags.dnd5e-divinitypoints.-=item`]: null });
   }
 });
 

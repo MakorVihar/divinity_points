@@ -524,6 +524,13 @@ export class DivinityPoints {
     const actor = item.parent; // the actor it was dropped onto
     if (!actor || !actor.isOwner) return;
 
+    // ── Idempotency guard ───────────────────────────────────────────────────
+    // If this exact item is already the tracked DP item, there's nothing to do.
+    // This makes processFirstDrop safe to call multiple times for the same item
+    // (e.g. once via the createItem hook, once explicitly), without re-triggering
+    // the duplicate-detection error below.
+    if (DivinityPoints.getActorFlagDpItem(actor) === item._id) return;
+
     // ── Duplicate check ─────────────────────────────────────────────────────
     if (DivinityPoints.getActorFlagDpItem(actor)) {
       ui.notifications.error(
@@ -539,17 +546,12 @@ export class DivinityPoints {
     }
 
     // ── Heal stale source.custom ─────────────────────────────────────────────
-    // If the world item was manually renamed without updating source.custom,
-    // fix it now so future lookups work correctly.
     const currentResourceName = DivinityPoints.settings.dpResource;
     if (item.system?.source?.custom !== currentResourceName) {
       await item.update({ "system.source.custom": currentResourceName });
     }
 
     // ── Store item ID in actor flags ─────────────────────────────────────────
-    // This allows getDivinityPointsItem() to find it instantly by ID rather
-    // than scanning all feats by name.
-    // Store item ID in actor flags safely
     await actor.setFlag("dnd5e-divinitypoints", "item", item._id);
   }
 

@@ -56,16 +56,6 @@ declare global {
     getDivinityPointsItem: (actor: Actor) => Item | false;
     alterDivinityPoints: (actor: Actor, uses: number, max: number) => Promise<void>;
   }
-
-  // Typed access to actor.flags["dnd5edivinitypoints"].
-  // Used in DivinityPoints.getActorFlagDpItem() etc.
-  interface FlagConfig {
-    Actor: {
-      dnd5edivinitypoints?: {
-        item?: string; // ID of the tracked DP item on this actor
-      };
-    };
-  }
 }
 
 // This export turns the file into a module, which is required for the

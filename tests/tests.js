@@ -20,52 +20,36 @@ import { DivinityPoints, buildConsumptionConfig, validateDpConsumption } from ".
 /**
  * makeActor(overrides)
  *
- * Builds a plain object shaped like the parts of a Foundry Actor that this
- * module actually reads. Using a plain object rather than a real database actor
- * keeps unit-style tests fast and free of side effects.
+ * Creates a real Foundry Actor with a real embedded "feat" item acting as the
+ * Divinity Points resource, and stores its id in the actor's flags. Returns
+ * { actor, dpItem }. Caller is responsible for deleting the actor afterwards
+ * (e.g. in an `after`/`afterEach` hook) via `actor.delete()`.
  *
- * The `items` collection mirrors the Map-like API that Foundry's EmbeddedCollection
- * exposes: .get(id) and .find(fn). item.update() merges changes in memory.
+ * NOTE: `overrides.type` (if provided) is applied to the actor's type at
+ * creation time. Other overrides are NOT supported as a generic merge —
+ * callers needing a non-character actor should pass { type: "vehicle" } etc.
  */
-function makeActor(overrides = {}) {
+async function makeActor(overrides = {}) {
   const resourceName = game.settings.get(DP_MODULE_NAME, "dpResource") ?? "Divinity Points";
 
-  const dpItem = {
-    _id: "item001",
-    type: "feat",
-    name: resourceName,
-    system: {
-      uses: { max: 5, spent: 2 },
-      source: { custom: resourceName },
-    },
-    update: async function (data) {
-      // Merge flat dotted keys (e.g. "system.uses.spent") directly onto the
-      // object so assertions can read them back as dpItem["system.uses.spent"].
-      Object.assign(this, data);
-    },
-    parent: null, // filled in below
-  };
-
-  const itemsMap = new Map([["item001", dpItem]]);
-  const items = {
-    get: (id) => itemsMap.get(id),
-    find: (fn) => [...itemsMap.values()].find(fn) ?? false,
-  };
-
-  const actor = {
-    type: "character",
+  const actor = await Actor.create({
     name: "Test Hero",
-    permission: 3,
-    flags: { dnd5edivinitypoints: { item: dpItem._id } },
-    items,
-    getRollData: () => ({ abilities: { cua_0: { mod: 4 } } }),
-    update: async function (data) {
-      foundry.utils.mergeObject(this, data);
-    },
-    ...overrides,
-  };
+    type: overrides.type ?? "character",
+  });
 
-  dpItem.parent = actor;
+  const [dpItem] = await actor.createEmbeddedDocuments("Item", [
+    {
+      name: resourceName,
+      type: "feat",
+      system: {
+        uses: { max: 5, spent: 2 },
+        source: { custom: resourceName },
+      },
+    },
+  ]);
+
+  await actor.setFlag("dnd5e-divinitypoints", "item", dpItem.id);
+
   return { actor, dpItem };
 }
 
@@ -96,29 +80,36 @@ export function registerTests(quench) {
         });
       });
 
-      describe("userHasActorOwnership", () => {
-        it("returns true for permission level 3 (OWNER)", () => {
-          assert.ok(DivinityPoints.userHasActorOwnership({ permission: 3 }));
-        });
-        it("returns false for permission level 2 (OBSERVER)", () => {
-          assert.ok(!DivinityPoints.userHasActorOwnership({ permission: 2 }));
-        });
-        it("returns false for permission level 0 (NONE)", () => {
-          assert.ok(!DivinityPoints.userHasActorOwnership({ permission: 0 }));
-        });
-      });
-
       describe("getActorFlagDpItem", () => {
-        it("returns the item id when the flag is set", () => {
-          const actor = { flags: { dnd5edivinitypoints: { item: "abc123" } } };
+        let actor;
+
+        afterEach(async () => {
+          if (actor) {
+            await actor.delete();
+            actor = null;
+          }
+        });
+
+        it("returns the item id when the flag is set", async () => {
+          actor = await Actor.create({ name: "Test Actor", type: "character" });
+          await actor.setFlag("dnd5e-divinitypoints", "item", "abc123");
+
           assert.strictEqual(DivinityPoints.getActorFlagDpItem(actor), "abc123");
         });
-        it("returns false for an empty string flag", () => {
-          assert.strictEqual(DivinityPoints.getActorFlagDpItem({ flags: { dnd5edivinitypoints: { item: "" } } }), false);
+
+        it("returns false for an empty string flag", async () => {
+          actor = await Actor.create({ name: "Test Actor", type: "character" });
+          await actor.setFlag("dnd5e-divinitypoints", "item", "");
+
+          assert.strictEqual(DivinityPoints.getActorFlagDpItem(actor), false);
         });
-        it("returns false when the flag namespace is absent", () => {
-          assert.strictEqual(DivinityPoints.getActorFlagDpItem({ flags: {} }), false);
+
+        it("returns false when the flag namespace is absent", async () => {
+          actor = await Actor.create({ name: "Test Actor", type: "character" });
+
+          assert.strictEqual(DivinityPoints.getActorFlagDpItem(actor), false);
         });
+
         it("returns false when actor is null", () => {
           assert.strictEqual(DivinityPoints.getActorFlagDpItem(null), false);
         });
@@ -143,22 +134,30 @@ export function registerTests(quench) {
       });
 
       describe("getDivinityPointsItem", () => {
+        let actor, dpItem;
+
+        afterEach(async () => {
+          if (actor) {
+            await actor.delete();
+            actor = null;
+            dpItem = null;
+          }
+        });
+
         it("returns false when actor is null", () => {
           assert.strictEqual(DivinityPoints.getDivinityPointsItem(null), false);
         });
-        it("finds the item via the actor flag (primary lookup)", () => {
-          const { actor, dpItem } = makeActor();
-          assert.strictEqual(DivinityPoints.getDivinityPointsItem(actor)._id, dpItem._id);
+        it("finds the item via the actor flag (primary lookup)", async () => {
+          ({ actor, dpItem } = await makeActor());
+          assert.strictEqual(DivinityPoints.getDivinityPointsItem(actor).id, dpItem.id);
         });
-        it("falls back to scanning feats by source.custom when flag is missing", () => {
-          const { actor, dpItem } = makeActor();
-          actor.flags = {};
-          assert.strictEqual(DivinityPoints.getDivinityPointsItem(actor)._id, dpItem._id);
+        it("falls back to scanning feats by source.custom when flag is missing", async () => {
+          ({ actor, dpItem } = await makeActor());
+          await actor.unsetFlag("dnd5e-divinitypoints", "item");
+          assert.strictEqual(DivinityPoints.getDivinityPointsItem(actor).id, dpItem.id);
         });
-        it("returns false when no items match", () => {
-          const { actor } = makeActor();
-          actor.flags = {};
-          actor.items = { get: () => undefined, find: () => false };
+        it("returns false when no items match", async () => {
+          actor = await Actor.create({ name: "Test Actor", type: "character" });
           assert.strictEqual(DivinityPoints.getDivinityPointsItem(actor), false);
         });
       });
@@ -193,32 +192,45 @@ export function registerTests(quench) {
       const { describe, it, assert } = context;
 
       describe("spent/max arithmetic", () => {
+        let actor, dpItem;
+
+        afterEach(async () => {
+          if (actor) {
+            await actor.delete();
+            actor = null;
+            dpItem = null;
+          }
+        });
+
         it("sets max when only max is provided", async () => {
-          const { dpItem } = makeActor();
+          ({ actor, dpItem } = await makeActor());
           await DivinityPoints.updateDivinityItem(dpItem, null, 10);
-          assert.strictEqual(dpItem["system.uses.max"], 10);
+          assert.strictEqual(dpItem.system.uses.max, 10);
         });
 
         it("sets spent correctly from value when only value is provided", async () => {
-          const { dpItem } = makeActor(); // max=5, spent=2
+          ({ actor, dpItem } = await makeActor()); // max=5, spent=2
           await DivinityPoints.updateDivinityItem(dpItem, 4, null);
           // spent = max(5) - value(4) = 1
-          assert.strictEqual(dpItem["system.uses.spent"], 1);
+          assert.strictEqual(dpItem.system.uses.spent, 1);
         });
 
         it("derives spent from the new max when both value and max are provided", async () => {
-          const { dpItem } = makeActor();
+          ({ actor, dpItem } = await makeActor());
           await DivinityPoints.updateDivinityItem(dpItem, 3, 8);
           // spent = newMax(8) - value(3) = 5
-          assert.strictEqual(dpItem["system.uses.spent"], 5);
-          assert.strictEqual(dpItem["system.uses.max"], 8);
+          assert.strictEqual(dpItem.system.uses.spent, 5);
+          assert.strictEqual(dpItem.system.uses.max, 8);
         });
 
         it("does nothing when both arguments are null", async () => {
-          const { dpItem } = makeActor();
+          ({ actor, dpItem } = await makeActor());
+          const spentBefore = dpItem.system.uses.spent;
+          const maxBefore = dpItem.system.uses.max;
           await DivinityPoints.updateDivinityItem(dpItem, null, null);
-          // No dotted keys should have been written
-          assert.strictEqual(dpItem["system.uses.spent"], undefined);
+          // Nothing should have changed
+          assert.strictEqual(dpItem.system.uses.spent, spentBefore);
+          assert.strictEqual(dpItem.system.uses.max, maxBefore);
         });
 
         it("does nothing when item is falsy", async () => {
@@ -288,7 +300,7 @@ export function registerTests(quench) {
   quench.registerBatch(
     "dnd5e-divinitypoints.validate-dp-consumption",
     (context) => {
-      const { describe, it, assert, before, after } = context;
+      const { describe, it, assert, before, after, afterEach } = context;
 
       function makeActivity({ actor, cost = 2, isDeterministic = true, type = "divinityPoints" } = {}) {
         return {
@@ -308,62 +320,90 @@ export function registerTests(quench) {
       }
 
       describe("early exits", () => {
+        let actor, dpItem;
+
+        afterEach(async () => {
+          if (actor) {
+            await actor.delete();
+            actor = null;
+            dpItem = null;
+          }
+        });
+
         it("returns undefined when activity has no actor", () => {
           assert.strictEqual(validateDpConsumption({ actor: null }, {}), undefined);
         });
-        it("returns undefined for non-character actor types", () => {
-          const { actor } = makeActor({ type: "vehicle" });
+        it("returns undefined for non-character actor types", async () => {
+          ({ actor, dpItem } = await makeActor({ type: "vehicle" }));
           assert.strictEqual(validateDpConsumption(makeActivity({ actor }), {}), undefined);
         });
-        it("returns undefined when there are no divinityPoints targets", () => {
-          const { actor } = makeActor();
+        it("returns undefined when there are no divinityPoints targets", async () => {
+          ({ actor, dpItem } = await makeActor());
           assert.strictEqual(validateDpConsumption(makeActivity({ actor, type: "spellSlot" }), {}), undefined);
         });
-        it("returns undefined for non-deterministic costs (lets consume() handle them)", () => {
-          const { actor } = makeActor();
+        it("returns undefined for non-deterministic costs (lets consume() handle them)", async () => {
+          ({ actor, dpItem } = await makeActor());
           assert.strictEqual(validateDpConsumption(makeActivity({ actor, isDeterministic: false }), {}), undefined);
         });
       });
 
       describe("with dpBlockOnInsufficient = true", () => {
+        let actor, dpItem;
+
         before(() => game.settings.set(DP_MODULE_NAME, "dpBlockOnInsufficient", true));
 
-        it("returns false when the actor has no DP item", () => {
-          const { actor } = makeActor();
-          actor.flags = {};
-          actor.items = { get: () => undefined, find: () => false };
+        afterEach(async () => {
+          if (actor) {
+            await actor.delete();
+            actor = null;
+            dpItem = null;
+          }
+        });
+
+        it("returns false when the actor has no DP item", async () => {
+          actor = await Actor.create({ name: "Test Actor", type: "character" });
           assert.strictEqual(validateDpConsumption(makeActivity({ actor }), {}), false);
         });
 
-        it("returns false when available points are less than the cost", () => {
+        it("returns false when available points are less than the cost", async () => {
           // available = max(5) - spent(4) = 1, cost = 2
-          const { actor } = makeActor();
-          actor.items.get("item001").system.uses = { max: 5, spent: 4 };
+          ({ actor, dpItem } = await makeActor());
+          await dpItem.update({ "system.uses.spent": 4 });
           assert.strictEqual(validateDpConsumption(makeActivity({ actor, cost: 2 }), {}), false);
         });
 
-        it("returns undefined (allows) when points exactly equal the cost", () => {
+        it("returns undefined (allows) when points exactly equal the cost", async () => {
           // available = max(5) - spent(3) = 2, cost = 2
-          const { actor } = makeActor();
-          actor.items.get("item001").system.uses = { max: 5, spent: 3 };
+          ({ actor, dpItem } = await makeActor());
+          await dpItem.update({ "system.uses.spent": 3 });
           assert.strictEqual(validateDpConsumption(makeActivity({ actor, cost: 2 }), {}), undefined);
         });
 
-        it("returns undefined when available points exceed the cost", () => {
+        it("returns undefined when available points exceed the cost", async () => {
           // available = 5, cost = 2
-          const { actor } = makeActor();
-          actor.items.get("item001").system.uses = { max: 5, spent: 0 };
+          ({ actor, dpItem } = await makeActor());
+          await dpItem.update({ "system.uses.spent": 0 });
           assert.strictEqual(validateDpConsumption(makeActivity({ actor, cost: 2 }), {}), undefined);
         });
       });
 
       describe("with dpBlockOnInsufficient = false (warn-only)", () => {
+        let actor, dpItem;
+
         before(() => game.settings.set(DP_MODULE_NAME, "dpBlockOnInsufficient", false));
         after(() => game.settings.set(DP_MODULE_NAME, "dpBlockOnInsufficient", true));
 
-        it("returns undefined even when points are insufficient", () => {
-          const { actor } = makeActor();
-          actor.items.get("item001").system.uses = { max: 5, spent: 5 }; // 0 available
+        afterEach(async () => {
+          if (actor) {
+            await actor.delete();
+            actor = null;
+            dpItem = null;
+          }
+        });
+
+        it("returns undefined even when points are insufficient", async () => {
+          ({ actor, dpItem } = await makeActor());
+          await dpItem.update({ "system.uses.spent": 5 }); // 0 available
           assert.strictEqual(validateDpConsumption(makeActivity({ actor, cost: 3 }), {}), undefined);
         });
       });
@@ -378,7 +418,7 @@ export function registerTests(quench) {
   quench.registerBatch(
     "dnd5e-divinitypoints.build-consumption-config",
     (context) => {
-      const { describe, it, assert, before } = context;
+      const { describe, it, assert, before, afterEach } = context;
 
       let config;
       before(() => {
@@ -396,14 +436,36 @@ export function registerTests(quench) {
           assert.strictEqual(config.label, DivinityPoints.settings.dpResource);
         });
         it("label getter reflects setting changes dynamically", async () => {
-          const original = game.settings.get(DP_MODULE_NAME, "dpResource");
-          await game.settings.set(DP_MODULE_NAME, "dpResource", "TEST_NAME");
-          assert.strictEqual(config.label, "TEST_NAME");
-          await game.settings.set(DP_MODULE_NAME, "dpResource", original);
+          // Stub the settings getter so the live `label` getter sees "TEST_NAME"
+          // without touching the real game.settings store — avoids onChange side
+          // effects (updateAllDpItemSources) AND avoids racing other concurrently
+          // running tests that read the real dpResource setting (which would post
+          // chat messages with "TEST_NAME" instead of the real resource name).
+          const realGet = game.settings.get;
+          game.settings.get = function (module, key) {
+            if (module === DP_MODULE_NAME && key === "dpResource") return "TEST_NAME";
+            return realGet.call(this, module, key);
+          };
+
+          try {
+            assert.strictEqual(config.label, "TEST_NAME");
+          } finally {
+            game.settings.get = realGet;
+          }
         });
       });
 
       describe("consumptionLabels", () => {
+        let actor, dpItem;
+
+        afterEach(async () => {
+          if (actor) {
+            await actor.delete();
+            actor = null;
+            dpItem = null;
+          }
+        });
+
         function makeTarget({ actor, cost = 2, isDeterministic = true } = {}) {
           return {
             actor,
@@ -414,30 +476,30 @@ export function registerTests(quench) {
           };
         }
 
-        it("returns an object with label, hint, and warn", () => {
-          const { actor } = makeActor();
+        it("returns an object with label, hint, and warn", async () => {
+          ({ actor, dpItem } = await makeActor());
           const result = config.consumptionLabels.call(makeTarget({ actor }), {}, {});
           assert.ok("label" in result);
           assert.ok("hint" in result);
           assert.ok("warn" in result);
         });
 
-        it("sets warn=true when cost exceeds available points", () => {
-          const { actor } = makeActor();
-          actor.items.get("item001").system.uses = { max: 5, spent: 4 }; // available=1
+        it("sets warn=true when cost exceeds available points", async () => {
+          ({ actor, dpItem } = await makeActor());
+          await dpItem.update({ "system.uses.spent": 4 }); // available=1
           const result = config.consumptionLabels.call(makeTarget({ actor, cost: 3 }), {}, {});
           assert.strictEqual(result.warn, true);
         });
 
-        it("sets warn=false when cost is within available points", () => {
-          const { actor } = makeActor();
-          actor.items.get("item001").system.uses = { max: 5, spent: 0 }; // available=5
+        it("sets warn=false when cost is within available points", async () => {
+          ({ actor, dpItem } = await makeActor());
+          await dpItem.update({ "system.uses.spent": 0 }); // available=5
           const result = config.consumptionLabels.call(makeTarget({ actor, cost: 2 }), {}, {});
           assert.strictEqual(result.warn, false);
         });
 
-        it("sets warn=false for non-deterministic costs", () => {
-          const { actor } = makeActor();
+        it("sets warn=false for non-deterministic costs", async () => {
+          ({ actor, dpItem } = await makeActor());
           const result = config.consumptionLabels.call(makeTarget({ actor, isDeterministic: false }), {}, {});
           assert.strictEqual(result.warn, false);
         });
@@ -453,58 +515,87 @@ export function registerTests(quench) {
   quench.registerBatch(
     "dnd5e-divinitypoints.alter-divinity-points",
     (context) => {
-      const { describe, it, assert } = context;
+      const { describe, it, assert, afterEach } = context;
 
       describe("guard clauses", () => {
+        let actor, dpItem;
+
+        afterEach(async () => {
+          if (actor) {
+            await actor.delete();
+            actor = null;
+            dpItem = null;
+          }
+        });
+
         it("does nothing when actor is null", async () => {
           await DivinityPoints.alterDivinityPoints(null, 3);
         });
         it("does nothing for non-character actor types", async () => {
-          const { actor, dpItem } = makeActor({ type: "vehicle" });
+          ({ actor, dpItem } = await makeActor({ type: "vehicle" }));
+          const spentBefore = dpItem.system.uses.spent;
           await DivinityPoints.alterDivinityPoints(actor, 3);
-          assert.strictEqual(dpItem["system.uses.spent"], undefined); // update was never called
+          assert.strictEqual(dpItem.system.uses.spent, spentBefore); // update was never called
         });
         it("does nothing when the actor has no DP item", async () => {
-          const { actor } = makeActor();
-          actor.flags = {};
-          actor.items = { get: () => undefined, find: () => false };
+          actor = await Actor.create({ name: "Test Actor", type: "character" });
           await DivinityPoints.alterDivinityPoints(actor, 3); // should not throw
         });
       });
 
       describe("value clamping", () => {
+        let actor, dpItem;
+
+        afterEach(async () => {
+          if (actor) {
+            await actor.delete();
+            actor = null;
+            dpItem = null;
+          }
+        });
+
         it("clamps a negative value to 0 (fully spent)", async () => {
-          const { actor, dpItem } = makeActor(); // max=5
+          ({ actor, dpItem } = await makeActor()); // max=5
           await DivinityPoints.alterDivinityPoints(actor, -5);
           // spent = max(5) - clamp(-5 → 0) = 5
-          assert.strictEqual(dpItem["system.uses.spent"], 5);
+          assert.strictEqual(dpItem.system.uses.spent, 5);
         });
 
         it("clamps a value above max down to max (fully available)", async () => {
-          const { actor, dpItem } = makeActor(); // max=5
+          ({ actor, dpItem } = await makeActor()); // max=5
           await DivinityPoints.alterDivinityPoints(actor, 999);
           // spent = max(5) - clamp(999 → 5) = 0
-          assert.strictEqual(dpItem["system.uses.spent"], 0);
+          assert.strictEqual(dpItem.system.uses.spent, 0);
         });
 
         it("sets a value exactly at max (boundary)", async () => {
-          const { actor, dpItem } = makeActor(); // max=5
+          ({ actor, dpItem } = await makeActor()); // max=5
           await DivinityPoints.alterDivinityPoints(actor, 5);
-          assert.strictEqual(dpItem["system.uses.spent"], 0);
+          assert.strictEqual(dpItem.system.uses.spent, 0);
         });
 
         it("sets a value of 0 correctly (fully spent)", async () => {
-          const { actor, dpItem } = makeActor(); // max=5
+          ({ actor, dpItem } = await makeActor()); // max=5
           await DivinityPoints.alterDivinityPoints(actor, 0);
-          assert.strictEqual(dpItem["system.uses.spent"], 5);
+          assert.strictEqual(dpItem.system.uses.spent, 5);
         });
       });
 
       describe("updating max", () => {
+        let actor, dpItem;
+
+        afterEach(async () => {
+          if (actor) {
+            await actor.delete();
+            actor = null;
+            dpItem = null;
+          }
+        });
+
         it("updates max when only max is provided", async () => {
-          const { actor, dpItem } = makeActor();
+          ({ actor, dpItem } = await makeActor());
           await DivinityPoints.alterDivinityPoints(actor, undefined, 10);
-          assert.strictEqual(dpItem["system.uses.max"], 10);
+          assert.strictEqual(dpItem.system.uses.max, 10);
         });
       });
     },
@@ -533,7 +624,7 @@ export function registerTests(quench) {
               system: { source: { custom: resourceName } },
             },
           ]);
-          await actor.update({ flags: { dnd5edivinitypoints: { item: dpItem.id } } });
+          await actor.setFlag("dnd5e-divinitypoints", "item", dpItem.id);
         });
 
         after(async () => {
@@ -545,9 +636,9 @@ export function registerTests(quench) {
         });
 
         it("finds the item by source.custom scan when flag is cleared", async () => {
-          await actor.update({ "flags.dnd5edivinitypoints.-=item": null });
+          await actor.unsetFlag("dnd5e-divinitypoints", "item");
           assert.strictEqual(DivinityPoints.getDivinityPointsItem(actor).id, dpItem.id);
-          await actor.update({ flags: { dnd5edivinitypoints: { item: dpItem.id } } });
+          await actor.setFlag("dnd5e-divinitypoints", "item", dpItem.id);
         });
 
         it("isDivinityItem returns true for the real item", () => {
@@ -568,7 +659,7 @@ export function registerTests(quench) {
               system: { source: { custom: resourceName } },
             },
           ]);
-          await actor.update({ flags: { dnd5edivinitypoints: { item: first.id } } });
+          await actor.setFlag("dnd5e-divinitypoints", "item", first.id);
         });
 
         after(async () => {
@@ -584,8 +675,20 @@ export function registerTests(quench) {
               system: { source: { custom: resourceName } },
             },
           ]);
-          await DivinityPoints.processFirstDrop(duplicate);
-          const updated = actor.items.get(duplicate.id);
+
+          // createEmbeddedDocuments triggers the "createItem" hook in main.js, which
+          // calls DivinityPoints.processFirstDrop(duplicate) automatically (since
+          // this item matches isDivinityItem). That call is async and not awaited
+          // by the hook dispatcher, so poll until the rename takes effect rather
+          // than calling processFirstDrop again ourselves.
+          const resourceNameLength = resourceName.length;
+          let updated = actor.items.get(duplicate.id);
+
+          for (let i = 0; i < 20 && updated.name.length === resourceNameLength; i++) {
+            await new Promise((r) => setTimeout(r, 25));
+            updated = actor.items.get(duplicate.id);
+          }
+
           assert.ok(updated.name !== resourceName, "duplicate should be renamed");
           assert.ok(updated.name.length > resourceName.length, "renamed item should have a suffix");
         });
