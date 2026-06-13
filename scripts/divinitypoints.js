@@ -29,10 +29,10 @@ import { ActorDivinityPointsConfig } from "./actor-bar-config.js";
 // ──────────────────────────────────────────────────────────────────────────────
 
 const SHEET_SELECTORS = {
-  v2: { selector: ".sidebar .stats > .meter-group:last-child", insertAfter: true },
+  character: { selector: ".sidebar .stats > .meter-group:last-child", insertAfter: true },
   npc: { selector: ".sheet-body .sidebar", insertAfter: false },
-  v1: { selector: ".header-details .attributes", insertAfter: true },
-  tidy: { selector: ".attributes .side-panel, .tidy-tab.favorites", insertAfter: false },
+  tidy_character: { selector: ".side-panel, .tidy-tab.favorites", insertAfter: false },
+  tidy_npc: { selector: ".sidebar, .traits", insertAfter: false },
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -649,14 +649,14 @@ export class DivinityPoints {
    * @param {object} data      - Sheet data (contains actor, editable flag, etc.)
    * @param {string} type      - Sheet variant: "v2", "v1", or "npc"
    */
-  static async alterCharacterSheet(app, html, context, type) {
+  static async alterCharacterSheet(app, html, type) {
     // Normalize html: Foundry v13 may pass a jQuery object; unwrap it to a plain Element
     if (html instanceof HTMLElement === false) html = html[0] ?? html;
 
     // In v13, actor came from data.actor. In v14 context structure differs —
     // always pull directly from the application instance instead.
     const actor = app.actor ?? app.document;
-    const editable = (app.isEditable ?? app.options?.editable ?? true) && (!DivinityPoints.settings.dpGmOnly || game.user.isGM);
+    const editable = (app.isEditMode ?? true) && (!DivinityPoints.settings.dpGmOnly || game.user.isGM);
 
     // Skip if actor type isn't character/npc, or bar is disabled
     if (!["character", "npc"].includes(actor?.type)) return;
@@ -671,10 +671,13 @@ export class DivinityPoints {
     const value = max - spent; // current points
     const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0; // bar fill %
 
+    // ── Look up where to insert the bar ──────────────────────────────────────
+    const isTidySheet = app.classList.contains("tidy5e-sheet");
+    const isCharacter = app.classList.contains("character");
+    const sheetKey = `${isTidySheet ? "tidy_" : ""}${isCharacter ? "character" : "npc"}`;
+
     // Render the bar template with all the data it needs
     const rendered = await foundry.applications.handlebars.renderTemplate(`modules/${DP_MODULE_NAME}/templates/divinity-points-sheet-tracker.hbs`, {
-      isV2: type === "v2",
-      isNPC: type === "npc",
       editable: editable,
       name: dpItem.name,
       _id: dpItem._id,
@@ -687,12 +690,7 @@ export class DivinityPoints {
     const container = document.createElement("div");
     container.className = "dp-bar-container";
     container.innerHTML = rendered;
-
-    // ── Look up where to insert the bar ──────────────────────────────────────
-    // Tidy5e takes priority regardless of `type`, since it has its own sidebar
-    // structure that differs from the standard v1/v2/npc sheets.
-    const sheetKey = app.classList?.contains("tidy5e-sheet") ? "tidy" : type;
-    const { selector: sidebarSelector, insertAfter } = SHEET_SELECTORS[sheetKey] ?? SHEET_SELECTORS.v1;
+    const { selector: sidebarSelector, insertAfter } = SHEET_SELECTORS[sheetKey] ?? {};
 
     const target = html.querySelector(sidebarSelector);
     if (!target) return;

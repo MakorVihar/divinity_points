@@ -307,26 +307,10 @@ Hooks.on("dnd5e.preActivityConsumption", (activity, usageConfig) => {
 });
 
 // ── Character sheet render hooks ──────────────────────────────────────────────
-// These fire whenever a character sheet is rendered (opened or refreshed).
-// We use them to inject the Divinity Points bar into the sheet sidebar.
-//
-// Multiple hooks cover different sheet types and versions:
-//   "renderActorSheet5eCharacter2" → dnd5e v2 (ApplicationV2-based) character sheet
-//   "renderActorSheetV2"           → any other ApplicationV2 actor sheet
-//   "renderActorSheet5eCharacter"  → legacy v1 character sheet
-//   "renderNPCActorSheet"          → NPC sheet
-//
-Hooks.on("renderActorSheet5eCharacter2", (app, html, context, options) => {
-  DivinityPoints.alterCharacterSheet(app, html, context, "v2");
-});
-Hooks.on("renderActorSheetV2", (app, html, context, options) => {
-  DivinityPoints.alterCharacterSheet(app, html, context, "v2");
-});
-Hooks.on("renderActorSheet5eCharacter", (app, html, context, options) => {
-  DivinityPoints.alterCharacterSheet(app, html, context, "v1");
-});
-Hooks.on("renderNPCActorSheet", (app, html, context, options) => {
-  DivinityPoints.alterCharacterSheet(app, html, context, "npc");
+// This fires whenever a character sheet is rendered (opened or refreshed).
+// We use it to inject the Divinity Points bar into the sheet sidebar.
+Hooks.on("renderActorSheetV2", (app, html) => {
+  DivinityPoints.alterCharacterSheet(app, html, "v2");
 });
 
 Hooks.on("quenchReady", (quench) => {
