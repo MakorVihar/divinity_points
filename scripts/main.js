@@ -31,7 +31,7 @@
 
 import { DP_MODULE_NAME } from "./constants.js";
 import { DivinityPoints, buildConsumptionConfig, validateDpConsumption } from "./divinitypoints.js";
-import { ActorDivinityPointsConfig } from "./actor-bar-config.js";
+import { ActorDivinityPointsConfig, DP_BASE_SHEET_MISSING } from "./actor-bar-config.js";
 import { DpSettingsForm } from "./settings-form.js";
 
 // ── Handlebars helper ──────────────────────────────────────────────────────────
@@ -205,6 +205,10 @@ Hooks.on("init", () => {
 Hooks.on("ready", async () => {
   // Only the GM needs to create/manage the world item
   if (!game.user.isGM) return;
+
+  if (DP_BASE_SHEET_MISSING) {
+    ui.notifications.error(game.i18n.localize(`${DP_MODULE_NAME}.cannotExtendDndSheet`), { permanent: true });
+  }
 
   // Check whether the Divinity Points item already exists in the world's
   // Items directory. We identify it by its source.custom field matching

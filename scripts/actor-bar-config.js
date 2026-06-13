@@ -31,7 +31,18 @@
 import { DP_MODULE_NAME } from "./constants.js";
 import { DivinityPoints } from "./divinitypoints.js";
 
-export class ActorDivinityPointsConfig extends dnd5e.applications.actor.BaseConfigSheetV2 {
+// actor-bar-config.js
+const _BaseConfigSheet = dnd5e?.applications?.actor?.BaseConfigSheetV2;
+
+if (!_BaseConfigSheet) {
+  console.error(
+    `${DP_MODULE_NAME} | dnd5e.applications.actor.BaseConfigSheetV2 not found — the dnd5e system may have changed its API. The Divinity Points config sheet will not work.`,
+  );
+}
+
+export const DP_BASE_SHEET_MISSING = !_BaseConfigSheet;
+
+export class ActorDivinityPointsConfig extends (_BaseConfigSheet ?? class {}) {
   constructor(options) {
     // Merge our options into any options passed by the caller
     foundry.utils.mergeObject(options ?? {}, {

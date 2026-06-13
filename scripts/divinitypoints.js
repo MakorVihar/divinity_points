@@ -25,6 +25,17 @@ import { DP_MODULE_NAME, DP_ITEM_ID } from "./constants.js";
 import { ActorDivinityPointsConfig } from "./actor-bar-config.js";
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Sheet Selectors for different sheet types
+// ──────────────────────────────────────────────────────────────────────────────
+
+const SHEET_SELECTORS = {
+  v2: { selector: ".sidebar .stats > .meter-group:last-child", insertAfter: true },
+  npc: { selector: ".sheet-body .sidebar", insertAfter: false },
+  v1: { selector: ".header-details .attributes", insertAfter: true },
+  tidy: { selector: ".attributes .side-panel, .tidy-tab.favorites", insertAfter: false },
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Private helper: send a styled chat message
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -673,33 +684,22 @@ export class DivinityPoints {
     });
 
     // Wrap the rendered HTML in a container div for easy removal on re-render
-    //const container = $('<div class="dp-bar-container"></div>').append(rendered);
     const container = document.createElement("div");
     container.className = "dp-bar-container";
     container.innerHTML = rendered;
 
-    // Find where to insert the bar — location differs per sheet type
-    let sidebarSelector = ".sidebar .stats"; // default
-    let insertAfter = true; // true = after, false = prepend inside
+    // ── Look up where to insert the bar ──────────────────────────────────────
+    // Tidy5e takes priority regardless of `type`, since it has its own sidebar
+    // structure that differs from the standard v1/v2/npc sheets.
+    const sheetKey = app.classList?.contains("tidy5e-sheet") ? "tidy" : type;
+    const { selector: sidebarSelector, insertAfter } = SHEET_SELECTORS[sheetKey] ?? SHEET_SELECTORS.v1;
 
-    if (app.classList?.contains("tidy5e-sheet")) {
-      // Tidy5e sheet has a different sidebar structure
-      sidebarSelector = ".attributes .side-panel, .tidy-tab.favorites";
-      insertAfter = false;
-    } else if (type === "v2") {
-      sidebarSelector = ".sidebar .stats > .meter-group:last-child";
-    } else if (type === "npc") {
-      sidebarSelector = ".sheet-body .sidebar";
-      insertAfter = false;
-    } else {
-      // Legacy v1 sheet
-      sidebarSelector = ".header-details .attributes";
-    }
+    const target = html.querySelector(sidebarSelector);
+    if (!target) return;
 
     // Remove any previous bar (prevents duplicates when the sheet re-renders)
     html.querySelectorAll(".dp-bar-container").forEach((el) => el.remove());
 
-    const target = html.querySelector(sidebarSelector);
     // Only attempt insertion if the target actually exists
     if (target) {
       if (insertAfter) {

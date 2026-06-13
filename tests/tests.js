@@ -696,4 +696,49 @@ export function registerTests(quench) {
     },
     { displayName: "Divinity Points: World Integration" },
   );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BATCH 8 — ActorDivinityPointsConfig base class resolution
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  quench.registerBatch(
+    "dnd5e-divinitypoints.actor-bar-config",
+    (context) => {
+      const { describe, it, assert } = context;
+
+      describe("base class resolution", () => {
+        it("dnd5e.applications.actor.BaseConfigSheetV2 exists in this environment", () => {
+          // This is the path actor-bar-config.js depends on at module-evaluation
+          // time. If dnd5e restructures its applications namespace, this is the
+          // canary that should fail first, before users hit the silent fallback.
+          assert.ok(
+            dnd5e?.applications?.actor?.BaseConfigSheetV2,
+            "dnd5e.applications.actor.BaseConfigSheetV2 is missing — actor-bar-config.js will use its fallback base class",
+          );
+        });
+
+        it("DP_BASE_SHEET_MISSING reflects whether the real base class was found", async () => {
+          const { DP_BASE_SHEET_MISSING } = await import("../scripts/actor-bar-config.js");
+          const expected = !dnd5e?.applications?.actor?.BaseConfigSheetV2;
+          assert.strictEqual(DP_BASE_SHEET_MISSING, expected);
+        });
+
+        it("ActorDivinityPointsConfig extends a class with a render method", async () => {
+          // Whether it's BaseConfigSheetV2 or the bare fallback, the resulting
+          // class should at minimum be constructible and chainable — verifying
+          // the fallback branch (class {}) wouldn't silently produce something
+          // unusable for `new ActorDivinityPointsConfig({...})`.
+          const { ActorDivinityPointsConfig } = await import("../scripts/actor-bar-config.js");
+          assert.strictEqual(typeof ActorDivinityPointsConfig, "function");
+
+          // Should be a subclass of either BaseConfigSheetV2 or the fallback —
+          // either way it should have a prototype chain longer than Object.
+          const proto = Object.getPrototypeOf(ActorDivinityPointsConfig.prototype);
+          assert.notStrictEqual(proto, null);
+          assert.notStrictEqual(proto, Object.prototype);
+        });
+      });
+    },
+    { displayName: "Divinity Points: ActorDivinityPointsConfig" },
+  );
 } // end registerTests

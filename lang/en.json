@@ -30,5 +30,6 @@
   "dnd5e-divinitypoints.colorSettingsButton": "Configure Bar Colours",
   "dnd5e-divinitypoints.colorSettingsHint": "Open the colour picker to customise the resource bar gradient and animation.",
   "dnd5e-divinitypoints.barPreview": "Preview",
-  "dnd5e-divinitypoints.dpAvailableHint": "{current} / {max} {dpResource} available."
+  "dnd5e-divinitypoints.dpAvailableHint": "{current} / {max} {dpResource} available.",
+  "dnd5e-divinitypoints.cannotExtendDndSheet": "Cannot extend the DnD 5e config sheet with Divinity Points. The system may have changed its API. The Divinity Points config sheet will not work."
 }
