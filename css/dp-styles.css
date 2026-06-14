@@ -4,10 +4,14 @@
    but uses --dp-* custom properties for independent theming.
    ============================================================ */
 
+/* These default values prevent Flash of Unstyled Content (FOUC).
+   They are overwritten immediately by setDpColors() in divinitypoints.js
+   once the module initialises. Keep them in sync with defaultSettings. */
 :root {
   --dp-left-color: #4a1060;
   --dp-right-color: #c89020;
   --dp-animation-name: dp-scroll;
+  --dp-popup-border-color: #830dab66;
 }
 
 /* ── Bar container ─────────────────────────────────────────── */
@@ -53,13 +57,8 @@
 }
 
 /* Fill bar pseudo-element */
-.tidy5e-sheet.application:where(.quadrone)
-  .meter-group.dp-bar
-  .meter
-  .progress::before,
-.tidy5e-sheet.application:where(.quadrone)
-  .meter-group.dp-bar
-  .meter.progress::before,
+.tidy5e-sheet.application:where(.quadrone) .meter-group.dp-bar .meter .progress::before,
+.tidy5e-sheet.application:where(.quadrone) .meter-group.dp-bar .meter.progress::before,
 .meter-group.dp-bar .meter.progress::before,
 .meter-group.dp-bar .meter .progress::before {
   content: "";
@@ -77,12 +76,7 @@
 .sheet.actor .sheet-body .sidebar .card .meter.dp-points .progress::before,
 .sheet.actor .side-panel .meter.dp-points .progress::before,
 .sheet.actor .sidebar .meter.dp-points .progress::before {
-  background: linear-gradient(
-    to right,
-    var(--dp-left-color),
-    var(--dp-right-color),
-    var(--dp-left-color)
-  );
+  background: linear-gradient(to right, var(--dp-left-color), var(--dp-right-color), var(--dp-left-color));
   background-size: 200% 100%;
   animation: var(--dp-animation-name) 5s linear infinite;
 }
@@ -136,56 +130,29 @@
 
 /* ── Config popup ──────────────────────────────────────────── */
 
-.divinitypoints.application a.header-button.control.close {
+.application.divinitypoints .item-image {
+  margin-right: 10px;
+}
+
+.application.divinitypoints a.header-button.control.close {
   text-indent: -999em;
   line-height: 0;
   margin: 0;
 }
 
-.divinitypoints.application a.header-button.control.close > i {
+.application.divinitypoints a.header-button.control.close > i {
   text-indent: 0;
 }
 
-.dp-popup .dp-number {
+.application.divinitypoints .dp-popup .dp-number {
   height: 100%;
-  font-size: 3em !important;
-  border: 1px solid #830dab66 !important;
-}
-
-/* ── Activity consumption fieldset ────────────────────────── */
-
-fieldset.dp-activity-consumption {
-  border: 2px solid var(--dnd5e-color-gold);
-  border-radius: 4px;
-  padding: 8px 10px;
-  margin-bottom: 10px;
-}
-
-fieldset.dp-activity-consumption legend {
-  font-weight: bold;
-  padding: 0 4px;
-  color: var(--dp-right-color);
-}
-
-fieldset.dp-activity-consumption .hint {
-  font-size: 0.75em;
-  opacity: 0.8;
-  margin: 0;
-  padding-top: 2px;
+  font-size: 3em;
+  border: 1px solid var(--dp-popup-border-color);
 }
 
 /* ── Scrolling animation ───────────────────────────────────── */
 
 @keyframes dp-scroll {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: -200% 0%;
-  }
-}
-
-@-webkit-keyframes dp-scroll {
   0% {
     background-position: 0 0;
   }
@@ -226,9 +193,18 @@ fieldset.dp-activity-consumption .hint {
   flex: 4;
 }
 
-#client-settings
-  .form-group[data-setting-id^="dnd5e-divinitypoints"]
-  > .form-fields {
+#client-settings .form-group[data-setting-id^="dnd5e-divinitypoints"] > .form-fields {
   flex: 1;
   min-width: 0;
+}
+
+/* ── Chat messages ─ */
+
+.dp-message--error {
+  color: var(--color-level-error, #ff4444);
+  font-style: italic;
+}
+.dp-message--success {
+  color: var(--color-level-success, #44cc44);
+  font-style: italic;
 }

@@ -1,6 +1,4 @@
 {
-  "dnd5e-divinitypoints.dpClassSubtype": "Divinity Points",
-  "dnd5e-divinitypoints.consumptionTypeLabel": "Divinity Points",
   "dnd5e-divinitypoints.resourceLabel": "Divinity Points Resource Name",
   "dnd5e-divinitypoints.resourceNote": "The name used for the resource item on character sheets.",
   "dnd5e-divinitypoints.dpResourceBarActive": "Show Bar on Character Sheet",

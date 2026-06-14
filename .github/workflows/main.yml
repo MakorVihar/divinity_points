@@ -13,12 +13,19 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
+      - name: Validate JavaScript syntax
+              run: |
+                for f in scripts/*.js; do
+                  node --check "$f" || exit 1
+                done
       - name: Create Custom Zip
         # This creates the zip with your exact name.
         # It excludes git history and the workflows folder to keep it clean.
         run: |
-          zip -r dnd5e-divinitypoints.zip . -x "*.git*" ".github/*"
+          zip -r dnd5e-divinitypoints.zip . \
+            -x "*.git*" -x ".github/*" -x "node_modules/*" \
+            -x "*.md" -x ".eslint*" -x "*.lock" -x "*.log" \
+            -x "tests/*" -x "tools/*" -x "*.yaml" -x "jsconfig.json"
       - name: Upload Assets to Release
         uses: softprops/action-gh-release@v2
         with:

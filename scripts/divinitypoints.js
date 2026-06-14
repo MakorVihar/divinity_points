@@ -127,10 +127,10 @@ export function buildConsumptionConfig() {
       // already, but this is a fallback.
       if (!dpItem) {
         dpChatMessage(
-          `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.noDpItem`, {
+          `<span class="dp-message--error">${game.i18n.format(`${DP_MODULE_NAME}.noDpItem`, {
             actorName: actor?.name ?? "?",
             dpResource: DivinityPoints.settings.dpResource,
-          })}</i>`,
+          })}</span>`,
           actor?.name ?? "?",
           whisper,
         );
@@ -149,7 +149,7 @@ export function buildConsumptionConfig() {
       // Guard against going below zero (safety net for non-deterministic formulas)
       if (available < cost) {
         dpChatMessage(
-          `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.notEnoughDp`, { actorName: actor.name, dpResource: dpItem.name })}</i>`,
+          `<span class="dp-message--error">${game.i18n.format(`${DP_MODULE_NAME}.notEnoughDp`, { actorName: actor.name, dpResource: dpItem.name })}</span>`,
           actor.name,
           whisper,
         );
@@ -172,12 +172,12 @@ export function buildConsumptionConfig() {
 
       // Post the success message to chat
       dpChatMessage(
-        `<i style='color:green;'>${game.i18n.format(`${DP_MODULE_NAME}.usedDp`, {
+        `<span class="dp-message--success">${game.i18n.format(`${DP_MODULE_NAME}.usedDp`, {
           actorName: actor.name,
           dpCost: cost,
           dpResource: dpItem.name,
           remaining: available - cost,
-        })}</i>`,
+        })}</span>`,
         actor.name,
         whisper,
       );
@@ -273,10 +273,10 @@ export function validateDpConsumption(activity, usageConfig) {
   // ── Case 1: No DP item on the sheet ───────────────────────────────────────
   if (!dpItem) {
     dpChatMessage(
-      `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.noDpItem`, {
+      `<span class="dp-message--error">${game.i18n.format(`${DP_MODULE_NAME}.noDpItem`, {
         actorName: actor.name,
         dpResource: DivinityPoints.settings.dpResource,
-      })}</i>`,
+      })}</span>`,
       actor.name,
       whisper,
     );
@@ -310,7 +310,7 @@ export function validateDpConsumption(activity, usageConfig) {
   // ── Case 2: Not enough DP ─────────────────────────────────────────────────
   if (totalCost > 0 && available < totalCost) {
     dpChatMessage(
-      `<i style='color:red;'>${game.i18n.format(`${DP_MODULE_NAME}.notEnoughDp`, { actorName: actor.name, dpResource: dpItem.name })}</i>`,
+      `<span class="dp-message--error">${game.i18n.format(`${DP_MODULE_NAME}.notEnoughDp`, { actorName: actor.name, dpResource: dpItem.name })}</span>`,
       actor.name,
       whisper,
     );
