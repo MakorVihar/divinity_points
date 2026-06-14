@@ -34,14 +34,6 @@ import { DivinityPoints, buildConsumptionConfig, validateDpConsumption } from ".
 import { ActorDivinityPointsConfig, DP_BASE_SHEET_MISSING } from "./actor-bar-config.js";
 import { DpSettingsForm } from "./settings-form.js";
 
-// ── Handlebars helper ──────────────────────────────────────────────────────────
-// Handlebars is the templating language used in .hbs template files.
-// This registers a custom helper called "dpFormat" that wraps game.i18n.format,
-// allowing templates to format localised strings with variable substitution.
-Handlebars.registerHelper("dpFormat", (path, ...args) => {
-  return game.i18n.format(path, args[0].hash);
-});
-
 // ── Rename tracking ────────────────────────────────────────────────────────────
 // When the GM renames the resource (e.g. "Divinity Points" → "Ki Points"),
 // the onChange handler needs to know BOTH the old name and the new name
@@ -58,6 +50,14 @@ let _lastDpResource = "Divinity Points";
 // dnd5e about our new consumption type.
 Hooks.on("init", () => {
   console.log(`${DP_MODULE_NAME} | Module initialising`);
+
+  // ── Handlebars helper ──────────────────────────────────────────────────────────
+  // Handlebars is the templating language used in .hbs template files.
+  // This registers a custom helper called "dpFormat" that wraps game.i18n.format,
+  // allowing templates to format localised strings with variable substitution.
+  Handlebars.registerHelper("dpFormat", (path, ...args) => {
+    return game.i18n.format(path, args[0].hash);
+  });
 
   // ── Register the resource name setting FIRST ─────────────────────────────
   // Other code in this block reads this setting (e.g. to label the consumption
@@ -194,8 +194,14 @@ Hooks.on("init", () => {
   // Expose helper functions to the global window so GMs can use them in macros:
   //   getDivinityPointsItem(actor) → returns the DP item or false
   //   alterDivinityPoints(actor, uses, max) → programmatically change DP
-  window.getDivinityPointsItem = DivinityPoints.getDivinityPointsItem.bind(DivinityPoints);
-  window.alterDivinityPoints = DivinityPoints.alterDivinityPoints.bind(DivinityPoints);
+  // Example: game.modules.get("dnd5e-divinitypoints")?.api?.alterDivinityPoints(actor, 1);
+  const mod = game.modules.get(DP_MODULE_NAME);
+  if (mod) {
+    mod.api = {
+      getDivinityPointsItem: DivinityPoints.getDivinityPointsItem.bind(DivinityPoints),
+      alterDivinityPoints: DivinityPoints.alterDivinityPoints.bind(DivinityPoints),
+    };
+  }
 });
 
 // ── ready hook ────────────────────────────────────────────────────────────────

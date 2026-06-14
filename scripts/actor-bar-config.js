@@ -43,23 +43,28 @@ if (!_BaseConfigSheet) {
 export const DP_BASE_SHEET_MISSING = !_BaseConfigSheet;
 
 export class ActorDivinityPointsConfig extends (_BaseConfigSheet ?? class {}) {
-  constructor(options) {
+  constructor(options = {}) {
     // Merge our options into any options passed by the caller
-    foundry.utils.mergeObject(options ?? {}, {
-      // CSS classes applied to the window element
-      classes: ["standard-form", "config-sheet", "themed", "sheet", "dnd5e2", "divinitypoints", "application"],
-      position: { width: 420 },
-      submitOnClose: true, // save when the user closes the window
-      editable: true,
-      submitOnChange: false, // don't save on every keystroke
-      closeOnSubmit: false, // keep the window open after saving
-      // Register named action handlers (called by data-action buttons in the template)
-      actions: {
-        deleteRecovery: ActorDivinityPointsConfig._deleteRecovery,
-        addRecovery: ActorDivinityPointsConfig._addRecovery,
-      },
-    });
-    super(options);
+    super(
+      foundry.utils.mergeObject(
+        {
+          // CSS classes applied to the window element
+          classes: ["standard-form", "config-sheet", "themed", "sheet", "dnd5e2", "divinitypoints", "application"],
+          position: { width: 420 },
+          submitOnClose: true, // save when the user closes the window
+          editable: true,
+          submitOnChange: false, // don't save on every keystroke
+          closeOnSubmit: false, // keep the window open after saving
+          // Register named action handlers (called by data-action buttons in the template)
+          actions: {
+            deleteRecovery: ActorDivinityPointsConfig._deleteRecovery,
+            addRecovery: ActorDivinityPointsConfig._addRecovery,
+          },
+        },
+        options,
+        { inplace: false },
+      ),
+    );
   }
 
   // ── Template configuration ─────────────────────────────────────────────────
@@ -185,7 +190,7 @@ export class ActorDivinityPointsConfig extends (_BaseConfigSheet ?? class {}) {
    * Called by: <button data-action="addRecovery">
    */
   static _addRecovery(event, target) {
-    const uses = foundry.utils.duplicate(this.document.system.uses);
+    const uses = foundry.utils.deepClone(this.document.system.uses);
     uses.recovery = [...(uses.recovery || []), {}]; // append empty entry
     this.document.update({ "system.uses.recovery": uses.recovery });
   }
@@ -196,7 +201,7 @@ export class ActorDivinityPointsConfig extends (_BaseConfigSheet ?? class {}) {
    */
   static _deleteRecovery(event, target) {
     const idx = Number(target.closest("[data-index]").dataset.index);
-    const uses = foundry.utils.duplicate(this.document.system.uses);
+    const uses = foundry.utils.deepClone(this.document.system.uses);
 
     if (!Array.isArray(uses.recovery)) {
       uses.recovery = Object.values(uses.recovery || {});

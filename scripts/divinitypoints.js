@@ -59,6 +59,21 @@ function dpChatMessage(content, actorName, whisper) {
   });
 }
 
+/**
+ * Gets and renders a template using provided data. Contains fallbacks for older versions
+ *
+ * V12+ uses foundry.applications.handlebars.renderTemplate
+ * V10 & V11 use foundry.utils?.renderTemplate
+ * V9 uses globalThis.renderTemplate
+ *
+ * @param {string}   path - The file path to the target HTML template
+ * @param {object}   data - A data object against which to compile the template
+ *
+ */
+function renderTemplate(path, data) {
+  return (foundry.applications?.handlebars?.renderTemplate ?? foundry.utils?.renderTemplate ?? globalThis.renderTemplate)(path, data);
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // buildConsumptionConfig
 // ──────────────────────────────────────────────────────────────────────────────
@@ -381,7 +396,8 @@ export class DivinityPoints {
    * @returns {boolean}
    */
   static isActorCharacter(actor) {
-    const type = foundry.utils.getProperty(actor, "type");
+    if (!actor) return false;
+    const type = actor.type;
     return type === "character" || type === "npc";
   }
 
@@ -437,7 +453,7 @@ export class DivinityPoints {
   static getDivinityPointsItem(actor) {
     if (!actor) return false;
 
-    const items = foundry.utils.getProperty(actor, "items");
+    const items = actor.items;
     const flagId = DivinityPoints.getActorFlagDpItem(actor);
 
     // Primary lookup: the flag stores the item's _id for O(1) retrieval
@@ -595,21 +611,20 @@ export class DivinityPoints {
     if (!game.user.isGM) return;
     console.log(`${DP_MODULE_NAME} | Renaming items: "${oldName}" → "${newName}"`);
 
-    // Update items in the world Items directory
-    for (const item of game.items) {
-      if (item.type === "feat" && item.system?.source?.custom === oldName) {
-        await item.update({ name: newName, "system.source.custom": newName });
-      }
-    }
+    // Get items in the world's Items directory
+    const worldUpdates = [...game.items]
+      .filter((i) => i.type === "feat" && i.system?.source?.custom === oldName)
+      .map((i) => i.update({ name: newName, "system.source.custom": newName }));
 
     // Update items embedded on actors (the copies on character sheets)
-    for (const actor of game.actors) {
-      for (const item of actor.items) {
-        if (item.type === "feat" && item.system?.source?.custom === oldName) {
-          await item.update({ name: newName, "system.source.custom": newName });
-        }
-      }
-    }
+    const actorUpdates = [...game.actors].flatMap((actor) =>
+      [...actor.items]
+        .filter((i) => i.type === "feat" && i.system?.source?.custom === oldName)
+        .map((i) => i.update({ name: newName, "system.source.custom": newName })),
+    );
+
+    // Update all
+    await Promise.all([...worldUpdates, ...actorUpdates]);
   }
 
   // ── Macro helper ───────────────────────────────────────────────────────────
@@ -689,7 +704,7 @@ export class DivinityPoints {
     const sheetKey = `${isTidySheet ? "tidy_" : ""}${isCharacter ? "character" : "npc"}`;
 
     // Render the bar template with all the data it needs
-    const rendered = await foundry.applications.handlebars.renderTemplate(`modules/${DP_MODULE_NAME}/templates/divinity-points-sheet-tracker.hbs`, {
+    const rendered = await renderTemplate(`modules/${DP_MODULE_NAME}/templates/divinity-points-sheet-tracker.hbs`, {
       editable: editable,
       name: dpItem.name,
       _id: dpItem._id,

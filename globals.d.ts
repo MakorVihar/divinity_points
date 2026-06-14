@@ -47,15 +47,6 @@ declare global {
       config: typeof _dnd5e.config;
     };
   }
-
-  // ── 3. Module globals and flags ───────────────────────────────────────────────
-  //
-  // main.js attaches these to window so GMs can call them from macros.
-
-  interface Window {
-    getDivinityPointsItem: (actor: Actor) => Item | false;
-    alterDivinityPoints: (actor: Actor, uses: number, max: number) => Promise<void>;
-  }
 }
 
 // This export turns the file into a module, which is required for the

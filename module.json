@@ -5,8 +5,7 @@
   "version": "2.5.1",
   "compatibility": {
     "minimum": "14.361",
-    "verified": "14.361",
-    "maximum": "14.999"
+    "verified": "14.361"
   },
   "relationships": {
     "systems": [
@@ -34,8 +33,7 @@
   "authors": [
     {
       "name": "MakorVihar",
-      "url": "https://github.com/MakorVihar",
-      "flags": {}
+      "url": "https://github.com/MakorVihar"
     }
   ],
   "esmodules": ["scripts/main.js"],
@@ -44,8 +42,7 @@
     {
       "lang": "en",
       "name": "English",
-      "path": "lang/en.json",
-      "flags": {}
+      "path": "lang/en.json"
     }
   ],
   "media": [
