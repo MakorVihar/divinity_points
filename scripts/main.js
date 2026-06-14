@@ -309,8 +309,12 @@ Hooks.on("dnd5e.preActivityConsumption", (activity, usageConfig) => {
 // ── Character sheet render hooks ──────────────────────────────────────────────
 // This fires whenever a character sheet is rendered (opened or refreshed).
 // We use it to inject the Divinity Points bar into the sheet sidebar.
-Hooks.on("renderActorSheetV2", (app, html) => {
-  DivinityPoints.alterCharacterSheet(app, html, "v2");
+Hooks.on("renderActorSheetV2", async (sheet, html) => {
+  try {
+    await DivinityPoints.alterCharacterSheet(sheet, html);
+  } catch (err) {
+    console.error(`${DP_MODULE_NAME} | Failed to render bar on sheet:`, err);
+  }
 });
 
 Hooks.on("quenchReady", (quench) => {

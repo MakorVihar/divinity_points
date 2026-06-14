@@ -35,6 +35,10 @@ const SHEET_SELECTORS = {
   tidy_npc: { selector: ".sidebar, .traits", insertAfter: false },
 };
 
+// List of actors currently being processed. Ensures we don't have a race condition when
+// two DP items are dropped onto the same actor in quick succession.
+const _processingActors = new Set();
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Private helper: send a styled chat message
 // ──────────────────────────────────────────────────────────────────────────────
@@ -51,8 +55,6 @@ function dpChatMessage(content, actorName, whisper) {
   ChatMessage.create({
     content,
     speaker: ChatMessage.getSpeaker({ alias: actorName }),
-    isContentVisible: false, // hides the speaker portrait header
-    isAuthor: true,
     whisper,
   });
 }
@@ -470,8 +472,14 @@ export class DivinityPoints {
     try {
       const rollData = actor.getRollData(); // all the @ variables for this actor
       rollData.flags = actor.flags; // include flags in case formula uses them
-      const roll = await Roll.create(str, rollData).evaluate();
-      return roll.total;
+      const roll = Roll.create(str, rollData);
+
+      // Use evaluateSync() if it is a deterministic roll and return early
+      if (roll.isDeterministic) return roll.evaluateSync().total;
+
+      // Otherwise use evaluate() and return the result
+      const evaluated = await roll.evaluate();
+      return evaluated.total;
     } catch (e) {
       console.warn(`${DP_MODULE_NAME} | Formula evaluation failed: "${str}"`, e);
       return 0;
@@ -542,28 +550,34 @@ export class DivinityPoints {
     // the duplicate-detection error below.
     if (DivinityPoints.getActorFlagDpItem(actor) === item._id) return;
 
-    // ── Duplicate check ─────────────────────────────────────────────────────
-    if (DivinityPoints.getActorFlagDpItem(actor)) {
-      ui.notifications.error(
-        game.i18n.format(`${DP_MODULE_NAME}.alreadyDpItemOwned`, {
-          dpResource: DivinityPoints.settings.dpResource,
-        }),
-      );
-      // Rename the duplicate so the GM can see what happened and delete it
-      await item.update({
-        name: item.name + " (" + game.i18n.localize(`${DP_MODULE_NAME}.duplicated`) + ")",
-      });
-      return;
-    }
+    if (_processingActors.has(actor.id)) return; // another drop is mid-flight
+    _processingActors.add(actor.id);
+    try {
+      // ── Duplicate check ─────────────────────────────────────────────────────
+      if (DivinityPoints.getActorFlagDpItem(actor)) {
+        ui.notifications.error(
+          game.i18n.format(`${DP_MODULE_NAME}.alreadyDpItemOwned`, {
+            dpResource: DivinityPoints.settings.dpResource,
+          }),
+        );
+        // Rename the duplicate so the GM can see what happened and delete it
+        await item.update({
+          name: item.name + " (" + game.i18n.localize(`${DP_MODULE_NAME}.duplicated`) + ")",
+        });
+        return;
+      }
 
-    // ── Heal stale source.custom ─────────────────────────────────────────────
-    const currentResourceName = DivinityPoints.settings.dpResource;
-    if (item.system?.source?.custom !== currentResourceName) {
-      await item.update({ "system.source.custom": currentResourceName });
-    }
+      // ── Heal stale source.custom ─────────────────────────────────────────────
+      const currentResourceName = DivinityPoints.settings.dpResource;
+      if (item.system?.source?.custom !== currentResourceName) {
+        await item.update({ "system.source.custom": currentResourceName });
+      }
 
-    // ── Store item ID in actor flags ─────────────────────────────────────────
-    await actor.setFlag("dnd5e-divinitypoints", "item", item._id);
+      // ── Store item ID in actor flags ─────────────────────────────────────────
+      await actor.setFlag("dnd5e-divinitypoints", "item", item._id);
+    } finally {
+      _processingActors.delete(actor.id);
+    }
   }
 
   // ── Rename propagation ─────────────────────────────────────────────────────
@@ -644,19 +658,17 @@ export class DivinityPoints {
    *  3. Inserts the bar HTML into the DOM
    *  4. Attaches click handlers for editing the value and opening config
    *
-   * @param {Application} app  - The sheet application instance
+   * @param {Application} sheet  - The sheet application instance
    * @param {jQuery|HTMLElement} html - The rendered sheet HTML
-   * @param {object} data      - Sheet data (contains actor, editable flag, etc.)
-   * @param {string} type      - Sheet variant: "v2", "v1", or "npc"
    */
-  static async alterCharacterSheet(app, html, type) {
+  static async alterCharacterSheet(sheet, html) {
     // Normalize html: Foundry v13 may pass a jQuery object; unwrap it to a plain Element
     if (html instanceof HTMLElement === false) html = html[0] ?? html;
 
     // In v13, actor came from data.actor. In v14 context structure differs —
     // always pull directly from the application instance instead.
-    const actor = app.actor ?? app.document;
-    const editable = (app.isEditMode ?? true) && (!DivinityPoints.settings.dpGmOnly || game.user.isGM);
+    const actor = sheet.actor ?? sheet.document;
+    const editable = (sheet.isEditMode ?? true) && (!DivinityPoints.settings.dpGmOnly || game.user.isGM);
 
     // Skip if actor type isn't character/npc, or bar is disabled
     if (!["character", "npc"].includes(actor?.type)) return;
@@ -672,8 +684,8 @@ export class DivinityPoints {
     const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0; // bar fill %
 
     // ── Look up where to insert the bar ──────────────────────────────────────
-    const isTidySheet = app.classList.contains("tidy5e-sheet");
-    const isCharacter = app.classList.contains("character");
+    const isTidySheet = html.classList.contains("tidy5e-sheet");
+    const isCharacter = html.classList.contains("character");
     const sheetKey = `${isTidySheet ? "tidy_" : ""}${isCharacter ? "character" : "npc"}`;
 
     // Render the bar template with all the data it needs

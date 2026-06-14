@@ -90,7 +90,9 @@ export class ActorDivinityPointsConfig extends (_BaseConfigSheet ?? class {}) {
     context = await super._preparePartContext(partId, context, options);
 
     // Add our item's uses data
-    context.uses = this.document.system.uses;
+    const uses = this.document.system.uses;
+    context.uses = { ...uses, value: uses.max - (uses.spent ?? 0) };
+
     // Add a "value" property (current uses = max - spent) for the template
     context.uses.value = context.uses.max - (context.uses.spent ?? 0);
     context.img = this.document.img;
@@ -159,22 +161,18 @@ export class ActorDivinityPointsConfig extends (_BaseConfigSheet ?? class {}) {
     const fde = new foundry.applications.ux.FormDataExtended(form);
     const data = foundry.utils.expandObject(fde.object);
 
-    // Convert "current value" back to "spent" (dnd5e's internal format)
-    data.uses.spent = data.uses.max - data.uses.value;
-
     // Build a minimal update object — only send what actually changed
-    const originalUses = foundry.utils.duplicate(item.system.uses);
+    const originalUses = item.system.uses;
     const deltaUses = {};
     if (data.uses.max !== originalUses.max) deltaUses.max = data.uses.max;
-    if (data.uses.value !== originalUses.value) deltaUses.spent = data.uses.spent;
-
-    // Merge the submitted data back into the item for the re-render
-    const changedUses = foundry.utils.mergeObject(item.system.uses, data.uses);
+    if (data.uses.max !== originalUses.max || data.uses.value !== originalUses.max - (originalUses.spent ?? 0)) {
+      deltaUses.spent = (deltaUses.max ?? originalUses.max) - data.uses.value;
+    }
 
     // Apply the update via the parent class
     await super._processSubmitData(event, form, Object.keys(deltaUses).length ? { "system.uses": deltaUses } : {});
 
-    this.document.system.uses = changedUses;
+    //   this.document.system.uses = changedUses;
     this.render(); // refresh the popup to show updated values
   }
 
