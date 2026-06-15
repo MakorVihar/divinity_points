@@ -14,11 +14,3 @@
  * Change this only if you rename the module itself.
  */
 export const DP_MODULE_NAME = "dnd5e-divinitypoints";
-
-/**
- * The ID of the "Divinity Points" feature item as it would appear
- * in a compendium pack. Currently unused (no pack is shipped),
- * but kept for legacy compatibility with any items that were
- * created from a compendium in older versions.
- */
-export const DP_ITEM_ID = "DivinityPnts001a";

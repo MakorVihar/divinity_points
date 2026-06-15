@@ -21,7 +21,7 @@
  *   This is just a convenient way to group related utility functions under one name.
  */
 
-import { DP_MODULE_NAME, DP_ITEM_ID } from "./constants.js";
+import { DP_MODULE_NAME } from "./constants.js";
 import { ActorDivinityPointsConfig } from "./actor-bar-config.js";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -531,9 +531,9 @@ export class DivinityPoints {
 
     // Update Spent using Value
     if (value !== null) {
-      // Convert from "current value" to "newSpent" (dnd5e's internal format)
+      // Convert from "current value" to "newSpent" (dnd5e's internal format), making sure we spend more than the max
       const effectiveMax = max ?? item.system.uses.max;
-      update["system.uses.spent"] = effectiveMax - value;
+      update["system.uses.spent"] = Math.min(effectiveMax - value, max);
     }
 
     if (Object.keys(update).length > 0) {
@@ -631,7 +631,7 @@ export class DivinityPoints {
 
   /**
    * Programmatically set an actor's Divinity Points.
-   * Exposed on window.alterDivinityPoints so macros can call it.
+   * Exposed on game.modules.get("dnd5e-divinitypoints").api.alterDivinityPoints so macros can call it.
    *
    * Examples (in a Foundry macro):
    *   alterDivinityPoints(actor, 0)        // set current to 0 (empty)
@@ -726,12 +726,10 @@ export class DivinityPoints {
     html.querySelectorAll(".dp-bar-container").forEach((el) => el.remove());
 
     // Only attempt insertion if the target actually exists
-    if (target) {
-      if (insertAfter) {
-        target.after(container);
-      } else {
-        target.prepend(container);
-      }
+    if (insertAfter) {
+      target.after(container);
+    } else {
+      target.prepend(container);
     }
 
     // ── Event handlers ──────────────────────────────────────────────────────

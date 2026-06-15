@@ -59,6 +59,7 @@ export class ActorDivinityPointsConfig extends (_BaseConfigSheet ?? class {}) {
           actions: {
             deleteRecovery: ActorDivinityPointsConfig._deleteRecovery,
             addRecovery: ActorDivinityPointsConfig._addRecovery,
+            updateDpMax: ActorDivinityPointsConfig._updateDpMax,
           },
         },
         options,
@@ -98,8 +99,6 @@ export class ActorDivinityPointsConfig extends (_BaseConfigSheet ?? class {}) {
     const uses = this.document.system.uses;
     context.uses = { ...uses, value: uses.max - (uses.spent ?? 0) };
 
-    // Add a "value" property (current uses = max - spent) for the template
-    context.uses.value = context.uses.max - (context.uses.spent ?? 0);
     context.img = this.document.img;
     context.name = this.document.name;
 
@@ -174,10 +173,21 @@ export class ActorDivinityPointsConfig extends (_BaseConfigSheet ?? class {}) {
       deltaUses.spent = (deltaUses.max ?? originalUses.max) - data.uses.value;
     }
 
+    // Merge each submitted recovery entry onto a clone of its original
+    // counterpart — array updates replace wholesale, so this preserves
+    // fields the form doesn't edit (e.g. recharge.options).
+    if (data.uses.recovery) {
+      const formRecovery = Array.isArray(data.uses.recovery) ? data.uses.recovery : Object.values(data.uses.recovery);
+      const originalRecovery = Array.isArray(originalUses.recovery) ? originalUses.recovery : Object.values(originalUses.recovery ?? {});
+
+      deltaUses.recovery = formRecovery.map((entry, i) =>
+        foundry.utils.mergeObject(foundry.utils.deepClone(originalRecovery[i] ?? {}), entry, { inplace: false }),
+      );
+    }
+
     // Apply the update via the parent class
     await super._processSubmitData(event, form, Object.keys(deltaUses).length ? { "system.uses": deltaUses } : {});
 
-    //   this.document.system.uses = changedUses;
     this.render(); // refresh the popup to show updated values
   }
 
@@ -209,6 +219,39 @@ export class ActorDivinityPointsConfig extends (_BaseConfigSheet ?? class {}) {
 
     uses.recovery.splice(idx, 1); // remove the entry at this index
     this.document.update({ "system.uses.recovery": uses.recovery });
+  }
+
+  /**
+   * Resets the maximum amount of points formula in case it's overwritten
+   *
+   * Sets this actor's item to use the base item's formula in case it was manually overwritten
+   * Called by: <button data-action="updateDpMax" data-index="N">
+   */
+  static async _updateDpMax(event, target) {
+    const item = this.document;
+    const actor = item.parent;
+
+    // Safely find the base item (find() stops at the first match, which is more efficient)
+    const base_item = game.items.find((i) => i.type === "feat" && i.name === item.name);
+
+    if (!base_item) {
+      ui.notifications.warn(`Could not find a base item named "${item.name}" in the world Items.`);
+      return;
+    }
+
+    // Extract the raw formula string
+    const newMaxFormula = base_item.toObject().system.uses.max;
+
+    // Write the original formula to the item
+    await item.update({
+      "system.uses.max": newMaxFormula,
+    });
+
+    // Evaluate the formula and update the item
+    const newMax = await DivinityPoints.withActorData(newMaxFormula, actor);
+    await DivinityPoints.updateDivinityItem(item, newMax - (item.system.uses.spent ?? 0), newMax);
+
+    this.render();
   }
 
   // ── Window title ───────────────────────────────────────────────────────────
